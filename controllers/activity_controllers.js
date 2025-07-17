@@ -5,6 +5,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const path = require("path");
 const fs = require("fs");
+const ExcelJS = require("exceljs");
 
 const AddNewActivity = async (req, res) => {
   console.log("Received request body:", req.body);
@@ -296,7 +297,7 @@ const GetAllActivites = async (req, res) => {
     const activities = await ActivityModel.find(filter, { __v: 0, _id: 0 });
     const activityCount = await ActivityModel.countDocuments(filter);
 
-  /*   if (activities.length > 0) {
+    /*   if (activities.length > 0) {
       console.log(
         "شكل المسار المحفوظ في قاعدة البيانات:",
         activities[0].images
@@ -373,6 +374,170 @@ const DeleteImageFromActivity = async (req, res) => {
   }
 };
 
+const ExportExcel = async (req, res) => {
+  console.log("✅ دخلنا على ExportExcel");
+  try {
+    const query = {};
+
+    if (req.query.name) {
+      query.activityName = { $regex: req.query.name, $options: "i" };
+    }
+    if (req.query.governorate) {
+      query.governorate = req.query.governorate;
+    }
+    if (req.query.activityCode) {
+      query.activityCode = req.query.activityCode;
+    }
+    if (req.query.status) {
+      query.status = req.query.status;
+    }
+    if (req.query.fundingType) {
+      query.fundingType = req.query.fundingType;
+    }
+
+    const activities = await ActivityModel.find(query);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("مشروعات");
+    worksheet.views = [{ rightToLeft: true }];
+
+    // ✅ أولاً: عرّف الأعمدة
+    worksheet.columns = [
+      {
+        header: "كود المشروع",
+        key: "activityCode",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "اسم المشروع",
+        key: "activityName",
+        width: 25,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "وصف المشروع",
+        key: "activityDescription",
+        width: 30,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "المحافظة",
+        key: "governorate",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "الشركة المنفذة",
+        key: "executingCompany",
+        width: 25,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "الاستشاري",
+        key: "consultant",
+        width: 25,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "القيمة التقديرية",
+        key: "estimatedValue",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "القيمة التعاقدية",
+        key: "contractualValue",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "المنصرف",
+        key: "disbursedAmount",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+      // { header: "لم يتم صرفه", key: "undisbursedAmount", width: 20, alignment: { wrapText: true } },
+      {
+        header: "تاريخ الإسناد",
+        key: "assignmentDate",
+        width: 20,
+        style: { numFmt: "dd/mm/yyyy" },
+        alignment: { wrapText: true },
+      },
+      {
+        header: "تاريخ النهو",
+        key: "completionDate",
+        width: 20,
+        style: { numFmt: "dd/mm/yyyy" },
+        alignment: { wrapText: true },
+      },
+      {
+        header: "تاريخ الاستلام",
+        key: "receptionDate",
+        width: 20,
+        style: { numFmt: "dd/mm/yyyy" },
+        alignment: { wrapText: true },
+      },
+      {
+        header: "حالة المشروع",
+        key: "status",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+      {
+        header: "نسبة الإنجاز",
+        key: "progress",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+    ];
+    activities.forEach((activity) => {
+      /*   const undisbursedAmount =
+        (activity.contractualValue || 0) - (activity.disbursed || 0); */
+
+      worksheet.addRow({
+        ...activity.toObject(),
+        // undisbursedAmount,
+      });
+    });
+
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFFFF00" }, // أصفر
+      };
+      // اختيارية: تخلي الخط Bold
+      cell.font = { bold: true };
+      // اختيارية: محاذاة النص للوسط
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true,
+      };
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename*=UTF-8''" +
+        encodeURIComponent("تقرير_المشروعات.xlsx")
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("❌ Error in ExportExcel:", error);
+    res
+      .status(500)
+      .json(httpStatus.httpErrorStatus("حدث خطأ أثناء تصدير البيانات"));
+  }
+};
+
 module.exports = {
   AddNewActivity,
   GetAllActivites,
@@ -383,4 +548,5 @@ module.exports = {
   getActivityImages,
   DeleteImageFromActivity,
   DeletePdfFromActivity,
+  ExportExcel,
 };

@@ -12,7 +12,22 @@ router.post(
   allowedTo(userRoles.ADMIN, userRoles.MANAGER),
   controllers.AddNewActivity
 );
+router.get("/export-excel", controllers.ExportExcel);
 router.get("/", verifyLogin, controllers.GetAllActivites);
+router.post(
+  "/delete-pdf",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  controllers.DeletePdfFromActivity
+);
+
+router.post(
+  "/delete-image",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  controllers.DeleteImageFromActivity
+);
+
 router.get("/:activityCode", controllers.GetActivityById);
 router.delete(
   "/:activityCode",
@@ -29,20 +44,6 @@ router.put(
     { name: "activityPdf", maxCount: 3 },
   ]),
   controllers.UpdateActivity
-);
-
-router.post(
-  "/delete-pdf",
-  verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
-  controllers.DeletePdfFromActivity
-);
-
-router.post(
-  "/delete-image",
-  verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
-  controllers.DeleteImageFromActivity
 );
 
 router.get("/:activityCode/images", verifyLogin, controllers.getActivityImages);

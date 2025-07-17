@@ -122,12 +122,12 @@ const activitySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    executionStatus: {
+/*     executionStatus: {
       // حالة التنفيذ (ن تنفيذ)
       type: Number,
       default: 0,
       trim: true,
-    },
+    }, */
 
     progress: {
       type: Number,
