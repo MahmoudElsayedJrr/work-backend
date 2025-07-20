@@ -35,6 +35,21 @@ const employeeSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+/* employeeSchema
+  .virtual("confirmPassword")
+  .get(function () {
+    return this._confirmPassword;
+  })
+  .set(function (value) {
+    this._confirmPassword = value;
+  });
+
+employeeSchema.pre("validate", function (next) {
+  if (this.isNew && this.password !== this._confirmPassword) {
+    this.invalidate("confirmPassword", "Passwords do not match");
+  }
+  next();
+}); */
 
 const Employee = mongoose.model("Employee", employeeSchema);
 
