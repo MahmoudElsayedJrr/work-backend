@@ -4,7 +4,6 @@ const activitySchema = new mongoose.Schema(
   {
     activityCode: {
       type: String,
-      required: [true, "كود النشاط مطلوب."],
       unique: true,
       trim: true,
       uppercase: true,
@@ -122,7 +121,7 @@ const activitySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-/*     executionStatus: {
+    /*     executionStatus: {
       // حالة التنفيذ (ن تنفيذ)
       type: Number,
       default: 0,
@@ -148,10 +147,10 @@ const activitySchema = new mongoose.Schema(
       },
     ],
 
-    projectLocationLink:{
+    projectLocationLink: {
       type: String,
       default: "",
-    }
+    },
   },
   {
     timestamps: true,
