@@ -42,6 +42,7 @@ router.put(
   upload.fields([
     { name: "images", maxCount: 3 },
     { name: "activityPdf", maxCount: 3 },
+    { name: "contractualDocuments", maxCount: 3 },
   ]),
   controllers.UpdateActivity
 );

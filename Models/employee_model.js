@@ -2,15 +2,22 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const employeeSchema = new mongoose.Schema(
   {
-    nationalId: {
+    /*  nationalId: {
       type: String,
       required: [true, "Id is required"],
       unique: true,
-    },
+    }, */
     name: {
       type: String,
       required: [true, "Name is required"],
+      unique: true,
       trim: true,
+      validate: {
+        validator: function (value) {
+          return !/\s/.test(value); // يرجع false لو فيه أي مسافة
+        },
+        message: "Name must not contain spaces",
+      },
     },
     email: {
       type: String,

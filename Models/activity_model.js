@@ -121,12 +121,43 @@ const activitySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    /*     executionStatus: {
-      // حالة التنفيذ (ن تنفيذ)
-      type: Number,
-      default: 0,
-      trim: true,
-    }, */
+
+    publishDate: {
+      // تاريخ النشر
+      type: Date,
+      default: null,
+    },
+
+    technicalDecisionDate: {
+      // تاريخ البت الفني
+      type: Date,
+      default: null,
+    },
+
+    financialDecisionDate: {
+      // تاريخ البت المالي
+      type: Date,
+      default: null,
+    },
+
+    assignmentOrderDate: {
+      // تاريخ امر الاسناد
+      type: Date,
+      default: null,
+    },
+
+    siteHandoverDate: {
+      // تاريخ تسليم الموقع
+      type: Date,
+      default: null,
+    },
+
+    contractualDocuments: [
+      {
+        filename: String,
+        path: String,
+      },
+    ],
 
     progress: {
       type: Number,

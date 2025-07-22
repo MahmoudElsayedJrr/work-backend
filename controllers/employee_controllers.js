@@ -12,8 +12,8 @@ const GetAllEmployees = async (req, res) => {
 
 const GetEmployeeById = async (req, res) => {
   try {
-    const { nationalId } = req.params;
-    const employee = await employeeModel.findOne({ nationalId });
+    const { name } = req.params;
+    const employee = await employeeModel.findOne({ name });
 
     if (!employee) return res.status(404).json(httpStatus.httpFaliureStatus());
 
@@ -26,8 +26,8 @@ const GetEmployeeById = async (req, res) => {
 
 const DeleteEmployee = async (req, res) => {
   try {
-    const { nationalId } = req.params;
-    const employee = await employeeModel.findOneAndDelete({ nationalId });
+    const { name } = req.params;
+    const employee = await employeeModel.findOneAndDelete({ name });
 
     if (!employee)
       return res
@@ -44,11 +44,11 @@ const DeleteEmployee = async (req, res) => {
 
 const UpdateEmployee = async (req, res) => {
   try {
-    const { nationalId } = req.params;
+    const { name } = req.params;
     const updatedEmployee = await employeeModel.findOneAndUpdate(
-      { nationalId },
+      { name },
       { $set: req.body },
-      { new: true }
+      { new: true, runValidators: true, context: "query" }
     );
 
     if (!updatedEmployee)

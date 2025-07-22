@@ -14,19 +14,19 @@ router.get(
   controllers.GetAllEmployees
 );
 router.get(
-  "/:nationalId",
+  "/:name",
   verifyLogin,
   allowedTo(userRoles.ADMIN),
   controllers.GetEmployeeById
 );
 router.delete(
-  "/deleteEmployee/:nationalId",
+  "/deleteEmployee/:name",
   verifyLogin,
   allowedTo(userRoles.ADMIN),
   controllers.DeleteEmployee
 );
 router.patch(
-  "/UpdateEmployee/:nationalId",
+  "/UpdateEmployee/:name",
   verifyLogin,
   allowedTo(userRoles.ADMIN),
   controllers.UpdateEmployee

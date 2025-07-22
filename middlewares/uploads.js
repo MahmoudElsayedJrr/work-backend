@@ -5,20 +5,32 @@ const fs = require("fs");
 // Define upload paths
 const imageUploadPath = path.join(__dirname, "..", "uploads", "activities");
 const pdfUploadPath = path.join(__dirname, "..", "uploads", "pdfs");
+const contractualDocumentsUploadPath = path.join(
+  __dirname,
+  "..",
+  "uploads",
+  "contractualDocuments"
+);
 
 // Ensure both directories exist
-[imageUploadPath, pdfUploadPath].forEach((folderPath) => {
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath, { recursive: true });
+[imageUploadPath, pdfUploadPath, contractualDocumentsUploadPath].forEach(
+  (folderPath) => {
+    if (!fs.existsSync(folderPath)) {
+      fs.mkdirSync(folderPath, { recursive: true });
+    }
   }
-});
+);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    if (file.mimetype === "application/pdf") {
-      cb(null, pdfUploadPath);
-    } else {
+    if (file.fieldname === "images") {
       cb(null, imageUploadPath);
+    } else if (file.fieldname === "activityPdf") {
+      cb(null, pdfUploadPath);
+    } else if (file.fieldname === "contractualDocuments") {
+      cb(null, contractualDocumentsUploadPath);
+    } else {
+      cb(new Error("Unknown field name"), null);
     }
   },
   filename: (req, file, cb) => {

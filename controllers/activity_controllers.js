@@ -107,6 +107,12 @@ const updatableFieldsByRole = {
     "activityDescription",
     "activityPdf",
     "projectLocationLink",
+    "publishDate",
+    "technicalDecisionDate",
+    "financialDecisionDate",
+    "assignmentOrderDate",
+    "siteHandoverDate",
+    "contractualDocuments",
   ],
   manager: [
     "activityName",
@@ -121,6 +127,12 @@ const updatableFieldsByRole = {
     "activityDescription",
     "activityPdf",
     "projectLocationLink",
+    "publishDate",
+    "technicalDecisionDate",
+    "financialDecisionDate",
+    "assignmentOrderDate",
+    "siteHandoverDate",
+    "contractualDocuments",
   ],
   financial: [
     "estimatedValue",
@@ -151,6 +163,7 @@ const updatableFieldsByRole = {
 }; */
 
 const UpdateActivity = async (req, res) => {
+  console.log("FILES RECEIVED:", JSON.stringify(req.files, null, 2));
   try {
     const { activityCode } = req.params;
     const employeeRole = req.currentEmployee.role;
@@ -167,6 +180,10 @@ const UpdateActivity = async (req, res) => {
 
     const allowedFields = updatableFieldsByRole[employeeRole];
 
+    if (req.body.contractualDocuments === "") {
+      req.body.contractualDocuments = [];
+    }
+
     Object.keys(req.body).forEach((key) => {
       if (allowedFields.includes(key)) {
         activityToUpdate[key] = req.body[key];
@@ -181,6 +198,27 @@ const UpdateActivity = async (req, res) => {
         (file) => `uploads/activities/${file.filename}`
       );
       activityToUpdate.images.push(...newImagePaths);
+    }
+
+    if (req.files?.contractualDocuments?.length > 0) {
+      const newContractualDocuments = req.files.contractualDocuments.map(
+        (file) => {
+          const safeName = Buffer.from(file.originalname, "latin1").toString(
+            "utf8"
+          );
+
+          return {
+            filename: safeName,
+            path: `uploads/contractualDocuments/${file.filename}`,
+          };
+        }
+      );
+
+      if (!Array.isArray(activityToUpdate.contractualDocuments)) {
+        activityToUpdate.contractualDocuments = [];
+      }
+
+      activityToUpdate.contractualDocuments.push(...newContractualDocuments);
     }
 
     // حفظ ملف PDF

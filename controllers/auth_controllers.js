@@ -4,8 +4,8 @@ const generateJWT = require("../utils/generateJWT");
 const httpStatus = require("../utils/http_status");
 
 const register = async (req, res) => {
-  const { nationalId, name, role, password, email } = req.body;
-  const oldEmployee = await employeeModel.findOne({ nationalId });
+  const { name, role, password, email } = req.body;
+  const oldEmployee = await employeeModel.findOne({ name });
   if (oldEmployee) {
     return res
       .status(400)
@@ -19,14 +19,12 @@ const register = async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
   const newEmployee = new employeeModel({
-    nationalId,
     name,
     email,
     role,
     password: hashedPassword,
   });
   const token = await generateJWT({
-    nationalId: newEmployee.nationalId,
     name: newEmployee.name,
     role: newEmployee.role,
     email: newEmployee.email,
@@ -37,8 +35,8 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const { nationalId, password } = req.body;
-  const employee = await employeeModel.findOne({ nationalId: nationalId });
+  const { name, password } = req.body;
+  const employee = await employeeModel.findOne({ name });
   if (!employee) {
     return res
       .status(404)
@@ -53,7 +51,6 @@ const login = async (req, res) => {
       .json(httpStatus.httpFaliureStatus("كلمة المرور غير صحيحة"));
   }
   const token = await generateJWT({
-    nationalId: employee.nationalId,
     name: employee.name,
     role: employee.role,
   });
@@ -65,9 +62,9 @@ const login = async (req, res) => {
 const changePassword = async (req, res) => {
   try {
     const { OldPassword, NewPassword, ConfirmPassword } = req.body;
-    const nationalId = req.currentEmployee.nationalId;
+    const name = req.currentEmployee.name;
 
-    const employee = await employeeModel.findOne({ nationalId });
+    const employee = await employeeModel.findOne({ name });
     if (!employee) {
       return res
         .status(404)
@@ -122,8 +119,8 @@ const changePassword = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
-    const nationalId = req.currentEmployee.nationalId;
-    const employee = await employeeModel.findOne({ nationalId });
+    const name = req.currentEmployee.name;
+    const employee = await employeeModel.findOne({ name });
     if (!employee) {
       return res
         .status(404)
