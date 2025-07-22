@@ -6,13 +6,14 @@ const upload = require("../middlewares/uploads");
 const allowedTo = require("../middlewares/allowedTo");
 const userRoles = require("../utils/user_roles");
 
+router.get("/export-excel", controllers.ExportExcel);
 router.post(
   "/",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.MANAGER),
   controllers.AddNewActivity
 );
-router.get("/export-excel", controllers.ExportExcel);
+
 router.get("/", verifyLogin, controllers.GetAllActivites);
 router.post(
   "/delete-pdf",

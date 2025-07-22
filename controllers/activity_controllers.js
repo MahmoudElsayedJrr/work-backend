@@ -6,6 +6,7 @@ const upload = multer({ storage: storage });
 const path = require("path");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
+const xlsx = require("xlsx");
 
 const AddNewActivity = async (req, res) => {
   console.log("Received request body:", req.body);
@@ -457,6 +458,20 @@ const ExportExcel = async (req, res) => {
         header: "وصف المشروع",
         key: "activityDescription",
         width: 30,
+        alignment: { wrapText: true },
+      },
+
+      {
+        header: "نوع التمويل",
+        key: "fundingType",
+        width: 20,
+        alignment: { wrapText: true },
+      },
+
+      {
+        header: "فئة المشروع",
+        key: "projectCategory",
+        width: 20,
         alignment: { wrapText: true },
       },
       {
