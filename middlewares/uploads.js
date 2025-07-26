@@ -1,4 +1,4 @@
-const multer = require("multer");
+/* const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
@@ -12,7 +12,7 @@ const contractualDocumentsUploadPath = path.join(
   "contractualDocuments"
 );
 
-// Ensure both directories exist
+
 [imageUploadPath, pdfUploadPath, contractualDocumentsUploadPath].forEach(
   (folderPath) => {
     if (!fs.existsSync(folderPath)) {
@@ -40,5 +40,30 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+module.exports = upload;
+ */
+
+const multer = require("multer");
+
+const storage = multer.memoryStorage();
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "application/pdf",
+    ];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("نوع الملف غير مدعوم"));
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 module.exports = upload;

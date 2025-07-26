@@ -1,12 +1,13 @@
 const ActivityModel = require("../Models/activity_model");
 const httpStatus = require("../utils/http_status");
 const multer = require("multer");
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const supabase = require("../utils/supabase");
 const path = require("path");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
 const xlsx = require("xlsx");
+const uploadImage = require("../utils/uploadImage");
+const uploadPdf = require("../utils/uploadPDF");
 
 const AddNewActivity = async (req, res) => {
   console.log("Received request body:", req.body);
@@ -21,10 +22,19 @@ const AddNewActivity = async (req, res) => {
           httpStatus.httpFaliureStatus("Activity with this code already exists")
         );
     }
+
+    // Filter out file upload fields from req.body to avoid casting errors
+    const { contractualDocuments, activitypdfs, images, ...otherFields } =
+      req.body;
+
     const newActivityData = {
-      ...req.body,
+      ...otherFields,
       activityCode: req.body.activityCode.toUpperCase(),
+      contractualDocuments: [],
+      activitypdfs: [],
+      images: [],
     };
+
     const newActivity = new ActivityModel(newActivityData);
     await newActivity.save();
     res.status(201).json(httpStatus.httpSuccessStatus(newActivity));
@@ -106,7 +116,7 @@ const updatableFieldsByRole = {
     "status",
     "images",
     "activityDescription",
-    "activityPdf",
+    "activitypdfs",
     "projectLocationLink",
     "publishDate",
     "technicalDecisionDate",
@@ -126,7 +136,7 @@ const updatableFieldsByRole = {
     "progress",
     "images",
     "activityDescription",
-    "activityPdf",
+    "activitypdfs",
     "projectLocationLink",
     "publishDate",
     "technicalDecisionDate",
@@ -164,7 +174,6 @@ const updatableFieldsByRole = {
 }; */
 
 const UpdateActivity = async (req, res) => {
-  console.log("FILES RECEIVED:", JSON.stringify(req.files, null, 2));
   try {
     const { activityCode } = req.params;
     const employeeRole = req.currentEmployee.role;
@@ -181,131 +190,94 @@ const UpdateActivity = async (req, res) => {
 
     const allowedFields = updatableFieldsByRole[employeeRole];
 
-    if (req.body.contractualDocuments === "") {
-      req.body.contractualDocuments = [];
-    }
-
+    // Handle regular fields (excluding file upload fields)
     Object.keys(req.body).forEach((key) => {
-      if (allowedFields.includes(key)) {
+      if (
+        allowedFields.includes(key) &&
+        key !== "contractualDocuments" &&
+        key !== "activitypdfs"
+      ) {
         activityToUpdate[key] = req.body[key];
-      } else {
+      } else if (key !== "contractualDocuments" && key !== "activitypdfs") {
         console.log(`Field ${key} not allowed for role ${employeeRole}`);
       }
     });
 
-    // حفظ الصور
     if (req.files?.images?.length > 0) {
-      const newImagePaths = req.files.images.map(
-        (file) => `uploads/activities/${file.filename}`
-      );
-      activityToUpdate.images.push(...newImagePaths);
+      if (!Array.isArray(activityToUpdate.images)) {
+        activityToUpdate.images = [];
+      }
+
+      for (const file of req.files.images) {
+        const buffer = file.buffer;
+        const originalName = file.originalname;
+
+        const { path, publicUrl } = await uploadImage(buffer, originalName);
+
+        activityToUpdate.images.push(publicUrl);
+      }
     }
 
     if (req.files?.contractualDocuments?.length > 0) {
-      const newContractualDocuments = req.files.contractualDocuments.map(
-        (file) => {
-          const safeName = Buffer.from(file.originalname, "latin1").toString(
-            "utf8"
-          );
-
-          return {
-            filename: safeName,
-            path: `uploads/contractualDocuments/${file.filename}`,
-          };
-        }
-      );
-
       if (!Array.isArray(activityToUpdate.contractualDocuments)) {
         activityToUpdate.contractualDocuments = [];
       }
 
-      activityToUpdate.contractualDocuments.push(...newContractualDocuments);
-    }
+      for (const file of req.files.contractualDocuments) {
+        const buffer = file.buffer;
+        // جرب إصلاح الترميز
+        const originalName = file.originalname;
+        const fixedName = Buffer.from(originalName, "latin1").toString("utf8");
+        console.log("original name:", originalName);
+        console.log("fixed name:", fixedName);
 
-    // حفظ ملف PDF
-    if (req.files?.activityPdf?.length > 0) {
-      const newPdfFiles = req.files.activityPdf.map((file) => {
-        const safeName = Buffer.from(file.originalname, "latin1").toString(
-          "utf8"
+        const { path, publicUrl } = await uploadPdf(
+          buffer,
+          fixedName, // استخدم الاسم المصحح
+          "activitycontractualdocuments"
         );
 
-        return {
-          filename: safeName,
-          path: `uploads/pdfs/${file.filename}`,
-        };
-      });
-
-      if (!Array.isArray(activityToUpdate.activityPdf)) {
-        activityToUpdate.activityPdf = [];
+        activityToUpdate.contractualDocuments.push({
+          filename: fixedName,
+          path: publicUrl,
+        });
       }
-
-      activityToUpdate.activityPdf.push(...newPdfFiles);
     }
 
+    console.log("activitypdfs files:", req.files?.activitypdfs);
+    if (req.files?.activitypdfs?.length > 0) {
+      // Initialize as array if not already
+      if (!Array.isArray(activityToUpdate.activitypdfs)) {
+        activityToUpdate.activitypdfs = [];
+      }
+
+      for (const file of req.files.activitypdfs) {
+        const buffer = file.buffer;
+        // إصلاح الترميز
+        const originalName = file.originalname;
+        const fixedName = Buffer.from(originalName, "latin1").toString("utf8");
+        console.log("original name:", originalName);
+        console.log("fixed name:", fixedName);
+
+        const { path, publicUrl } = await uploadPdf(
+          buffer,
+          fixedName, // استخدم الاسم المصحح
+          "activitypdfs"
+        );
+
+        activityToUpdate.activitypdfs.push({
+          filename: fixedName,
+          path: publicUrl,
+        });
+      }
+    }
+    console.log("PDFs Saved:", activityToUpdate.activitypdfs);
     const updatedActivity = await activityToUpdate.save();
 
     res.status(200).json(httpStatus.httpSuccessStatus(updatedActivity));
   } catch (error) {
+    console.error(error);
     res.status(400).json(httpStatus.httpErrorStatus(error.message));
-  }
-};
-
-const uploadActivityImages = async (req, res) => {
-  try {
-    const { activityCode } = req.params;
-    const activity = await ActivityModel.findOne({
-      activityCode: activityCode.toUpperCase(),
-    });
-
-    if (!activity) {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity not found"));
-    }
-
-    if (!req.files || req.files.length === 0) {
-      return res
-        .status(400)
-        .json(httpStatus.httpFaliureStatus("No file uploaded"));
-    }
-
-    const imagePaths = req.files.map((file) => {
-      return path
-        .join("uploads", "activities", file.filename)
-        .replace(/\\/g, "/");
-    });
-    activity.images.push(...imagePaths);
-    await activity.save();
-
-    res.status(200).json(httpStatus.httpSuccessStatus(activity));
-  } catch (error) {
-    res.status(500).json(httpStatus.httpErrorStatus(error.message));
-  }
-};
-
-const getActivityImages = async (req, res) => {
-  try {
-    const { activityCode } = req.params;
-
-    const activity = await ActivityModel.findOne({
-      activityCode: activityCode.toUpperCase(),
-    });
-
-    if (!activity) {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity not found"));
-    }
-    res.status(200).json(
-      httpStatus.httpSuccessStatus({
-        images: activity.images,
-      })
-    );
-
-    res.json({ images: imageUrls });
-    s;
-  } catch (error) {
-    res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
 
@@ -356,29 +328,59 @@ const GetAllActivites = async (req, res) => {
 
 const DeletePdfFromActivity = async (req, res) => {
   try {
-    console.log("==== وصلت هنا فعلاً ====");
     const { activityCode, pdfPath } = req.body;
-    console.log("Received code:", activityCode);
+    const { bucketName } = req.params;
+
+    console.log("bucketName =>", bucketName);
+
+    const fieldMap = {
+      activitypdfs: "activitypdfs",
+      activitycontractualdocuments: "contractualDocuments",
+    };
+
+    console.log("Available buckets =>", Object.keys(fieldMap));
+
+    const fieldName = fieldMap[bucketName];
+    if (!fieldName) {
+      return res
+        .status(400)
+        .json(httpStatus.httpFaliureStatus("Invalid bucket name"));
+    }
 
     const activity = await ActivityModel.findOne({
       activityCode: activityCode.toUpperCase(),
     });
-    console.log("Activity result:", activity);
-    if (!activity)
+
+    if (!activity) {
       return res
         .status(404)
         .json(httpStatus.httpFaliureStatus("Project not found"));
+    }
 
-    activity.activityPdf = activity.activityPdf.filter(
+    const fileName = decodeURIComponent(pdfPath.split("/").pop());
+
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .remove([fileName]);
+
+    if (error) {
+      return res
+        .status(500)
+        .json(
+          httpStatus.httpErrorStatus(
+            `Failed to delete from Supabase: ${error.message}`
+          )
+        );
+    }
+    console.log(fieldName);
+    activity[fieldName] = activity[fieldName].filter(
       (pdf) => pdf.path !== pdfPath
     );
-
-    const fullPath = path.join(__dirname, "..", pdfPath);
-    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-
     await activity.save();
 
-    res.status(200).json(httpStatus.httpSuccessStatus("PDF deleted"));
+    res
+      .status(200)
+      .json(httpStatus.httpSuccessStatus("PDF deleted successfully..."));
   } catch (err) {
     res.status(500).json(httpStatus.httpErrorStatus(err.message));
   }
@@ -397,14 +399,16 @@ const DeleteImageFromActivity = async (req, res) => {
         .status(404)
         .json(httpStatus.httpFaliureStatus("Project not found"));
 
-    console.log("imagePath from body:", imagePath);
-    console.log("images in DB:", activity.images);
+    const fileName = decodeURIComponent(imagePath.split("/").pop());
+    const { error } = await supabase.storage.from("images").remove([fileName]);
+
+    if (error) {
+      return res
+        .status(500)
+        .json(httpStatus.httpErrorStatus("Failed to delete from Supabase"));
+    }
 
     activity.images = activity.images.filter((img) => img !== imagePath);
-
-    const fullPath = path.join(__dirname, "..", imagePath);
-    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-
     await activity.save();
 
     res.status(200).json(httpStatus.httpSuccessStatus("Image deleted"));
@@ -597,8 +601,6 @@ module.exports = {
   GetActivityById,
   DeleteActivity,
   UpdateActivity,
-  uploadActivityImages,
-  getActivityImages,
   DeleteImageFromActivity,
   DeletePdfFromActivity,
   ExportExcel,

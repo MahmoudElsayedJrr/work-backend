@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@supabase/supabase-js": "^2.52.1",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
@@ -17,9 +18,11 @@
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mime-types": "^3.0.1",
     "mongodb": "^6.16.0",
     "mongoose": "^8.15.1",
     "multer": "^2.0.1",
+    "uuid": "^11.1.0",
     "validator": "^13.15.15",
     "xlsx": "^0.18.5"
   },

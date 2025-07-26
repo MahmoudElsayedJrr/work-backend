@@ -16,7 +16,7 @@ router.post(
 
 router.get("/", verifyLogin, controllers.GetAllActivites);
 router.post(
-  "/delete-pdf",
+  "/delete-pdf/:bucketName",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.MANAGER),
   controllers.DeletePdfFromActivity
@@ -42,12 +42,10 @@ router.put(
   allowedTo(userRoles.ADMIN, userRoles.MANAGER, userRoles.FINANCIAL),
   upload.fields([
     { name: "images", maxCount: 3 },
-    { name: "activityPdf", maxCount: 3 },
+    { name: "activitypdfs", maxCount: 3 },
     { name: "contractualDocuments", maxCount: 3 },
   ]),
   controllers.UpdateActivity
 );
-
-router.get("/:activityCode/images", verifyLogin, controllers.getActivityImages);
 
 module.exports = router;

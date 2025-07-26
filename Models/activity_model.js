@@ -171,7 +171,7 @@ const activitySchema = new mongoose.Schema(
       default: [],
     },
 
-    activityPdf: [
+    activitypdfs: [
       {
         filename: String,
         path: String,
@@ -189,6 +189,18 @@ const activitySchema = new mongoose.Schema(
 );
 
 activitySchema.pre("save", function (next) {
+  // Ensure arrays are properly initialized
+  if (!Array.isArray(this.contractualDocuments)) {
+    this.contractualDocuments = [];
+  }
+  if (!Array.isArray(this.activitypdfs)) {
+    this.activitypdfs = [];
+  }
+  if (!Array.isArray(this.images)) {
+    this.images = [];
+  }
+
+  // Calculate undisbursed amount
   if (
     this.isModified("contractualValue") ||
     this.isModified("disbursedAmount")
