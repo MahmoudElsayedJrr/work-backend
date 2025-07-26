@@ -79,19 +79,89 @@ const GetActivityById = async (req, res) => {
 const DeleteActivity = async (req, res) => {
   try {
     const { activityCode } = req.params;
-    const activity = await ActivityModel.findOneAndDelete({
+
+    // أولاً: ابحث عن المشروع قبل حذفه
+    const activity = await ActivityModel.findOne({
       activityCode: activityCode.toUpperCase(),
     });
 
-    if (!activity)
+    if (!activity) {
       return res
         .status(404)
         .json(httpStatus.httpFaliureStatus("Activity not found"));
+    }
+
+    // حذف الصور من Supabase
+    if (activity.images && activity.images.length > 0) {
+      const imageFiles = activity.images.map((imagePath) => {
+        const fileName = decodeURIComponent(imagePath.split("/").pop());
+        return fileName;
+      });
+
+      if (imageFiles.length > 0) {
+        const { error: imageError } = await supabase.storage
+          .from("activityimages")
+          .remove(imageFiles);
+
+        if (imageError) {
+          console.error("Error deleting images:", imageError);
+        }
+      }
+    }
+
+    // حذف ملفات PDF من activitypdfs
+    if (activity.activitypdfs && activity.activitypdfs.length > 0) {
+      const pdfFiles = activity.activitypdfs.map((pdf) => {
+        const fileName = decodeURIComponent(pdf.path.split("/").pop());
+        return fileName;
+      });
+
+      if (pdfFiles.length > 0) {
+        const { error: pdfError } = await supabase.storage
+          .from("activitypdfs")
+          .remove(pdfFiles);
+
+        if (pdfError) {
+          console.error("Error deleting activitypdfs:", pdfError);
+        }
+      }
+    }
+
+    // حذف ملفات PDF من contractualDocuments
+    if (
+      activity.contractualDocuments &&
+      activity.contractualDocuments.length > 0
+    ) {
+      const contractFiles = activity.contractualDocuments.map((doc) => {
+        const fileName = decodeURIComponent(doc.path.split("/").pop());
+        return fileName;
+      });
+
+      if (contractFiles.length > 0) {
+        const { error: contractError } = await supabase.storage
+          .from("activitycontractualdocuments")
+          .remove(contractFiles);
+
+        if (contractError) {
+          console.error("Error deleting contractualDocuments:", contractError);
+        }
+      }
+    }
+
+    // الآن احذف المشروع من قاعدة البيانات
+    await ActivityModel.findOneAndDelete({
+      activityCode: activityCode.toUpperCase(),
+    });
 
     res
       .status(200)
-      .json(httpStatus.httpSuccessStatus("Activity deleted successfully"));
+      .json(
+        httpStatus.httpSuccessStatus(
+          "Activity and all its files deleted successfully"
+        )
+      );
   } catch (error) {
+    console.error("Error in DeleteActivity:", error);
     res.status(400).json(httpStatus.httpErrorStatus(error.message));
   }
 };
