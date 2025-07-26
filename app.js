@@ -11,7 +11,14 @@ const cors = require("cors");
 const app = express();
 app.use(express.json());
 
-app.use(cors({ origin: "https://reconstructionsinai.netlify.app" }));
+app.use(
+  cors({
+    origin: "https://reconstructionsinai.netlify.app",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
 connectDB();
 
