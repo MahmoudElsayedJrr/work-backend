@@ -23,9 +23,39 @@ const AddNewActivity = async (req, res) => {
         );
     }
 
-    // Filter out file upload fields from req.body to avoid casting errors
-    const { contractualDocuments, activitypdfs, images, ...otherFields } =
-      req.body;
+    const {
+      contractualDocuments,
+      activitypdfs,
+      images,
+      roaddetails,
+      ...otherFields
+    } = req.body;
+
+    // Handle roaddetails arrays by taking the first value or converting to single value
+    const processedRoadDetails = roaddetails
+      ? {
+          petroleumCompany: Array.isArray(roaddetails.petroleumCompany)
+            ? roaddetails.petroleumCompany[0] || "N/A"
+            : roaddetails.petroleumCompany || "N/A",
+          bitumenQuantity: Array.isArray(roaddetails.bitumenQuantity)
+            ? parseFloat(roaddetails.bitumenQuantity[0]) || 0
+            : parseFloat(roaddetails.bitumenQuantity) || 0,
+          mc: Array.isArray(roaddetails.mc)
+            ? parseFloat(roaddetails.mc[0]) || 0
+            : parseFloat(roaddetails.mc) || 0,
+          rc: Array.isArray(roaddetails.rc)
+            ? parseFloat(roaddetails.rc[0]) || 0
+            : parseFloat(roaddetails.rc) || 0,
+          remainingQuantitiesTons: Array.isArray(
+            roaddetails.remainingQuantitiesTons
+          )
+            ? parseFloat(roaddetails.remainingQuantitiesTons[0]) || 0
+            : parseFloat(roaddetails.remainingQuantitiesTons) || 0,
+          notes: Array.isArray(roaddetails.notes)
+            ? roaddetails.notes[0] || ""
+            : roaddetails.notes || "",
+        }
+      : {};
 
     const newActivityData = {
       ...otherFields,
@@ -33,10 +63,12 @@ const AddNewActivity = async (req, res) => {
       contractualDocuments: [],
       activitypdfs: [],
       images: [],
+      roaddetails: processedRoadDetails,
     };
 
     const newActivity = new ActivityModel(newActivityData);
     await newActivity.save();
+
     res.status(201).json(httpStatus.httpSuccessStatus(newActivity));
   } catch (error) {
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
@@ -194,6 +226,15 @@ const updatableFieldsByRole = {
     "assignmentOrderDate",
     "siteHandoverDate",
     "contractualDocuments",
+    "roaddetails",
+    "petroleumCompany",
+    "bitumenQuantity",
+    "mc",
+    "rc",
+    "remainingQuantitiesTons",
+    "notes",
+    "estimatedValue",
+    "contractualValue",
   ],
   manager: [
     "activityName",
@@ -214,6 +255,8 @@ const updatableFieldsByRole = {
     "assignmentOrderDate",
     "siteHandoverDate",
     "contractualDocuments",
+    "estimatedValue",
+    "contractualValue",
   ],
   financial: [
     "estimatedValue",
@@ -272,6 +315,32 @@ const UpdateActivity = async (req, res) => {
         console.log(`Field ${key} not allowed for role ${employeeRole}`);
       }
     });
+
+    if (req.body.roaddetails) {
+      const road = req.body.roaddetails;
+
+      // Handle arrays by taking the first value or converting to single value
+      activityToUpdate.roaddetails = {
+        petroleumCompany: Array.isArray(road.petroleumCompany)
+          ? road.petroleumCompany[0] || "N/A"
+          : road.petroleumCompany || "N/A",
+        bitumenQuantity: Array.isArray(road.bitumenQuantity)
+          ? parseFloat(road.bitumenQuantity[0]) || 0
+          : parseFloat(road.bitumenQuantity) || 0,
+        mc: Array.isArray(road.mc)
+          ? parseFloat(road.mc[0]) || 0
+          : parseFloat(road.mc) || 0,
+        rc: Array.isArray(road.rc)
+          ? parseFloat(road.rc[0]) || 0
+          : parseFloat(road.rc) || 0,
+        remainingQuantitiesTons: Array.isArray(road.remainingQuantitiesTons)
+          ? parseFloat(road.remainingQuantitiesTons[0]) || 0
+          : parseFloat(road.remainingQuantitiesTons) || 0,
+        notes: Array.isArray(road.notes)
+          ? road.notes[0] || ""
+          : road.notes || "",
+      };
+    }
 
     if (req.files?.images?.length > 0) {
       if (!Array.isArray(activityToUpdate.images)) {

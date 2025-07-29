@@ -67,7 +67,7 @@ const activitySchema = new mongoose.Schema(
     status: {
       //حاله النشاط
       type: String,
-      enum: ["قيد التنفيذ", "مكتمل", "متأخر"],
+      enum: ["قيد التنفيذ", "مكتمل", "متأخر", "مسحوب", "متوقف"],
       default: "قيد التنفيذ",
     },
 
@@ -120,6 +120,12 @@ const activitySchema = new mongoose.Schema(
       // تاريخ الاستلام
       type: Date,
       default: null,
+    },
+
+    executivePosition: {
+      type: String,
+      trim: true,
+      default: "",
     },
 
     publishDate: {
@@ -182,6 +188,35 @@ const activitySchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    roaddetails: {
+      petroleumCompany: {
+        type: String,
+        trim: true,
+        default: "N/A",
+      },
+      bitumenQuantity: {
+        type: Number,
+        min: 0,
+      },
+      mc: {
+        type: Number,
+        min: 0,
+      },
+      rc: {
+        type: Number,
+        min: 0,
+      },
+      remainingQuantitiesTons: {
+        type: Number,
+        min: 0,
+      },
+      notes: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+    },
   },
   {
     timestamps: true,
@@ -198,6 +233,42 @@ activitySchema.pre("save", function (next) {
   }
   if (!Array.isArray(this.images)) {
     this.images = [];
+  }
+
+  // Ensure roaddetails is properly initialized and handle array values
+  if (this.roaddetails) {
+    // Handle petroleumCompany
+    if (Array.isArray(this.roaddetails.petroleumCompany)) {
+      this.roaddetails.petroleumCompany =
+        this.roaddetails.petroleumCompany[0] || "N/A";
+    }
+
+    // Handle bitumenQuantity
+    if (Array.isArray(this.roaddetails.bitumenQuantity)) {
+      this.roaddetails.bitumenQuantity =
+        parseFloat(this.roaddetails.bitumenQuantity[0]) || 0;
+    }
+
+    // Handle mc
+    if (Array.isArray(this.roaddetails.mc)) {
+      this.roaddetails.mc = parseFloat(this.roaddetails.mc[0]) || 0;
+    }
+
+    // Handle rc
+    if (Array.isArray(this.roaddetails.rc)) {
+      this.roaddetails.rc = parseFloat(this.roaddetails.rc[0]) || 0;
+    }
+
+    // Handle remainingQuantitiesTons
+    if (Array.isArray(this.roaddetails.remainingQuantitiesTons)) {
+      this.roaddetails.remainingQuantitiesTons =
+        parseFloat(this.roaddetails.remainingQuantitiesTons[0]) || 0;
+    }
+
+    // Handle notes
+    if (Array.isArray(this.roaddetails.notes)) {
+      this.roaddetails.notes = this.roaddetails.notes[0] || "";
+    }
   }
 
   // Calculate undisbursed amount
