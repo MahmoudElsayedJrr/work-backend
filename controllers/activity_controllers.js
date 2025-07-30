@@ -9,6 +9,54 @@ const xlsx = require("xlsx");
 const uploadImage = require("../utils/uploadImage");
 const uploadPdf = require("../utils/uploadPDF");
 
+const AddDecisionForActivity = async (req, res) => {
+  try {
+    const { activityCode } = req.params;
+    let decisionData;
+    if (req.body.decision && req.body.decision.length > 0) {
+      decisionData = req.body.decision[0];
+    } else {
+      decisionData = req.body;
+    }
+
+    const { decisionName, decisionType, decisionQuantity, decisionPrice } =
+      decisionData;
+    const total = decisionQuantity * decisionPrice;
+
+    const activity = await ActivityModel.findOne({
+      activityCode: activityCode.toUpperCase(),
+    });
+
+    if (!activity)
+      return res
+        .status(404)
+        .json(httpStatus.httpFaliureStatus("Activity not found"));
+
+    const newDecision = await ActivityModel.findOneAndUpdate(
+      { activityCode: activityCode.toUpperCase() },
+      {
+        $push: {
+          decision: {
+            decisionName,
+            decisionType,
+            decisionQuantity,
+            decisionPrice,
+            decisionTotal: total,
+          },
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json(httpStatus.httpSuccessStatus(newDecision));
+  } catch (error) {
+    console.error("خطأ في إضافة البند:", error);
+    res
+      .status(500)
+      .json({ message: "حدث خطأ أثناء الإضافة", error: error.message });
+  }
+};
+
 const AddNewActivity = async (req, res) => {
   console.log("Received request body:", req.body);
   try {
@@ -735,6 +783,7 @@ const ExportExcel = async (req, res) => {
 };
 
 module.exports = {
+  AddDecisionForActivity,
   AddNewActivity,
   GetAllActivites,
   GetActivityById,

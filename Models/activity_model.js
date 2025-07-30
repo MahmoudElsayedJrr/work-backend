@@ -189,33 +189,36 @@ const activitySchema = new mongoose.Schema(
       default: "",
     },
 
-    decision: {
-      decisionName: {
-        type: String,
-        enum: {
-          values: ["تعاقدي", "مستجد", "متجاوز"],
-          message: 'نوع البند يجب أن يكون "تعاقدي" أو "مستجد" أو "متجاوز".',
+    decision: [
+      {
+        decisionName: {
+          type: String,
+          trim: true,
+        },
+        decisionType: {
+          type: String,
+          trim : true , 
+          enum: {
+            values: ["تعاقدي", "مستجد", "متجاوز"],
+            message: 'نوع البند يجب أن يكون "تعاقدي" أو "مستجد" أو "متجاوز.',
+          },
+        },
+
+        decisionQuantity: {
+          type: Number,
+          min: 0,
+        },
+
+        decisionPrice: {
+          type: Number,
+          min: 0,
+        },
+        decisionTotal: {
+          type: Number,
+          min: 0,
         },
       },
-      decisionType: {
-        type: String,
-        trim: true,
-      },
-
-      decisionQuantity: {
-        type: Number,
-        min: 0,
-      },
-
-      decisionPrice: {
-        type: Number,
-        min: 0,
-      },
-      decisionTotal: {
-        type: Number,
-        min: 0,
-      },
-    },
+    ],
 
     roaddetails: {
       petroleumCompany: {

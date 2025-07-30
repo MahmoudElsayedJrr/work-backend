@@ -29,6 +29,12 @@ router.post(
   controllers.DeleteImageFromActivity
 );
 
+router.put(
+  "/add-decision/:activityCode",
+  verifyLogin,
+  controllers.AddDecisionForActivity
+);
+
 router.get("/:activityCode", controllers.GetActivityById);
 router.delete(
   "/:activityCode",
