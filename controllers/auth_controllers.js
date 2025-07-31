@@ -15,6 +15,7 @@ const register = async (req, res) => {
         )
       );
   }
+  //console.log(employeeModel.schema.path("role").enumValues);
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);

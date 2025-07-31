@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const controllers = require("../controllers/activity_controllers");
+const decisionControllers = require("../controllers/decision_controllers");
 const verifyLogin = require("../middlewares/verifyLogin");
 const upload = require("../middlewares/uploads");
 const allowedTo = require("../middlewares/allowedTo");
@@ -30,9 +31,23 @@ router.post(
 );
 
 router.put(
-  "/add-decision/:activityCode",
+  "/decision/:activityCode",
   verifyLogin,
-  controllers.AddDecisionForActivity
+  decisionControllers.AddDecisionForActivity
+);
+
+router.delete(
+  "/decision/:activityCode/:decisionId",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  decisionControllers.DeleteDecisionById
+);
+
+router.put(
+  "/decision/:activityCode/:decisionId",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  decisionControllers.updateDecision
 );
 
 router.get("/:activityCode", controllers.GetActivityById);

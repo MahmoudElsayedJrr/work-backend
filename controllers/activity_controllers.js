@@ -1,61 +1,10 @@
 const ActivityModel = require("../Models/activity_model");
 const httpStatus = require("../utils/http_status");
-const multer = require("multer");
 const supabase = require("../utils/supabase");
-const path = require("path");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
-const xlsx = require("xlsx");
 const uploadImage = require("../utils/uploadImage");
 const uploadPdf = require("../utils/uploadPDF");
-
-const AddDecisionForActivity = async (req, res) => {
-  try {
-    const { activityCode } = req.params;
-    let decisionData;
-    if (req.body.decision && req.body.decision.length > 0) {
-      decisionData = req.body.decision[0];
-    } else {
-      decisionData = req.body;
-    }
-
-    const { decisionName, decisionType, decisionQuantity, decisionPrice } =
-      decisionData;
-    const total = decisionQuantity * decisionPrice;
-
-    const activity = await ActivityModel.findOne({
-      activityCode: activityCode.toUpperCase(),
-    });
-
-    if (!activity)
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity not found"));
-
-    const newDecision = await ActivityModel.findOneAndUpdate(
-      { activityCode: activityCode.toUpperCase() },
-      {
-        $push: {
-          decision: {
-            decisionName,
-            decisionType,
-            decisionQuantity,
-            decisionPrice,
-            decisionTotal: total,
-          },
-        },
-      },
-      { new: true, runValidators: true }
-    );
-
-    res.status(200).json(httpStatus.httpSuccessStatus(newDecision));
-  } catch (error) {
-    console.error("خطأ في إضافة البند:", error);
-    res
-      .status(500)
-      .json({ message: "حدث خطأ أثناء الإضافة", error: error.message });
-  }
-};
 
 const AddNewActivity = async (req, res) => {
   console.log("Received request body:", req.body);
@@ -228,7 +177,6 @@ const DeleteActivity = async (req, res) => {
       }
     }
 
-    // الآن احذف المشروع من قاعدة البيانات
     await ActivityModel.findOneAndDelete({
       activityCode: activityCode.toUpperCase(),
     });
@@ -266,7 +214,7 @@ const updatableFieldsByRole = {
     "status",
     "images",
     "activityDescription",
-    "activitypdfs",
+    "activityPdf",
     "projectLocationLink",
     "publishDate",
     "technicalDecisionDate",
@@ -274,15 +222,20 @@ const updatableFieldsByRole = {
     "assignmentOrderDate",
     "siteHandoverDate",
     "contractualDocuments",
-    "roaddetails",
     "petroleumCompany",
     "bitumenQuantity",
     "mc",
     "rc",
     "remainingQuantitiesTons",
     "notes",
-    "estimatedValue",
-    "contractualValue",
+    "decisionName",
+    "decisionType",
+    "decisionPrice",
+    "decisionQuantity",
+    "decisionUnit",
+    "extensionDate",
+    "suspensionDate",
+    "resumptionDate",
   ],
   manager: [
     "activityName",
@@ -293,9 +246,10 @@ const updatableFieldsByRole = {
     "receptionDate",
     "executionStatus",
     "progress",
+    "status",
     "images",
     "activityDescription",
-    "activitypdfs",
+    "activityPdf",
     "projectLocationLink",
     "publishDate",
     "technicalDecisionDate",
@@ -303,15 +257,24 @@ const updatableFieldsByRole = {
     "assignmentOrderDate",
     "siteHandoverDate",
     "contractualDocuments",
-    "estimatedValue",
-    "contractualValue",
   ],
-  financial: [
-    "estimatedValue",
-    "contractualValue",
-    "disbursedAmount",
-    "undisbursedAmount",
+  projectManager: [
+    "petroleumCompany",
+    "bitumenQuantity",
+    "mc",
+    "rc",
+    "remainingQuantitiesTons",
+    "notes",
+    "decisionName",
+    "decisionType",
+    "decisionPrice",
+    "decisionQuantity",
+    "decisionUnit",
+    "extensionDate",
+    "suspensionDate",
+    "resumptionDate",
   ],
+  financial: ["estimatedValue", "contractualValue", "disbursedAmount"],
   employee: [],
 };
 
@@ -351,7 +314,6 @@ const UpdateActivity = async (req, res) => {
 
     const allowedFields = updatableFieldsByRole[employeeRole];
 
-    // Handle regular fields (excluding file upload fields)
     Object.keys(req.body).forEach((key) => {
       if (
         allowedFields.includes(key) &&
@@ -363,6 +325,16 @@ const UpdateActivity = async (req, res) => {
         console.log(`Field ${key} not allowed for role ${employeeRole}`);
       }
     });
+
+    if (req.body.extensionDate) {
+      const newExtensionNumber = (activity.extension?.length || 0) + 1;
+      activity.extension.push({
+        extensionNumber: newExtensionNumber,
+        extensionDate: req.body.extensionDate,
+      });
+
+      activity.completionDate = req.body.extensionDate;
+    }
 
     if (req.body.roaddetails) {
       const road = req.body.roaddetails;
@@ -782,8 +754,61 @@ const ExportExcel = async (req, res) => {
   }
 };
 
+const DeleteDecisionById = async (req, res) => {
+  try {
+    const { activityCode, decisionId } = req.params;
+
+    // Validate decisionId format
+    if (
+      !decisionId ||
+      !require("mongoose").Types.ObjectId.isValid(decisionId)
+    ) {
+      return res
+        .status(400)
+        .json(httpStatus.httpFaliureStatus("Invalid decision ID format"));
+    }
+
+    // Find the activity and remove the specific decision
+    const updatedActivity = await ActivityModel.findOneAndUpdate(
+      { activityCode: activityCode.toUpperCase() },
+      { $pull: { decision: { _id: decisionId } } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedActivity) {
+      return res
+        .status(404)
+        .json(httpStatus.httpFaliureStatus("Activity not found"));
+    }
+
+    // Check if the decision was actually removed
+    const decisionExists = updatedActivity.decision.some(
+      (decision) => decision._id.toString() === decisionId
+    );
+
+    if (decisionExists) {
+      return res
+        .status(404)
+        .json(
+          httpStatus.httpFaliureStatus("Decision not found in this activity")
+        );
+    }
+
+    res.status(200).json(
+      httpStatus.httpSuccessStatus({
+        message: "Decision deleted successfully",
+        activity: updatedActivity,
+      })
+    );
+  } catch (error) {
+    console.error("خطأ في حذف البند:", error);
+    res
+      .status(500)
+      .json({ message: "حدث خطأ أثناء الحذف", error: error.message });
+  }
+};
+
 module.exports = {
-  AddDecisionForActivity,
   AddNewActivity,
   GetAllActivites,
   GetActivityById,

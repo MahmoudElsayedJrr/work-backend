@@ -122,6 +122,33 @@ const activitySchema = new mongoose.Schema(
       default: null,
     },
 
+    extension: [
+      {
+        extensionNumber: {
+          type: Number,
+          min: 0,
+        },
+
+        extensionDate: {
+          // تاريخ مد المده
+          type: Date,
+          default: null,
+        },
+      },
+    ],
+
+    suspensionDate: {
+      // تاريخ  محضر التوقف
+      type: Date,
+      default: null,
+    },
+
+    resumptionDate: {
+      // تاريخ  الاستئناف
+      type: Date,
+      default: null,
+    },
+
     executivePosition: {
       type: String,
       trim: true,
@@ -197,7 +224,7 @@ const activitySchema = new mongoose.Schema(
         },
         decisionType: {
           type: String,
-          trim : true , 
+          trim: true,
           enum: {
             values: ["تعاقدي", "مستجد", "متجاوز"],
             message: 'نوع البند يجب أن يكون "تعاقدي" أو "مستجد" أو "متجاوز.',
@@ -207,6 +234,11 @@ const activitySchema = new mongoose.Schema(
         decisionQuantity: {
           type: Number,
           min: 0,
+        },
+
+        decisionUnit: {
+          type: String,
+          trim: true,
         },
 
         decisionPrice: {
