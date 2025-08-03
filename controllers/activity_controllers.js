@@ -28,7 +28,6 @@ const AddNewActivity = async (req, res) => {
       ...otherFields
     } = req.body;
 
-    // Handle roaddetails arrays by taking the first value or converting to single value
     const processedRoadDetails = roaddetails
       ? {
           petroleumCompany: Array.isArray(roaddetails.petroleumCompany)
@@ -236,6 +235,7 @@ const updatableFieldsByRole = {
     "extensionDate",
     "suspensionDate",
     "resumptionDate",
+    "extension",
   ],
   manager: [
     "activityName",
@@ -273,6 +273,7 @@ const updatableFieldsByRole = {
     "extensionDate",
     "suspensionDate",
     "resumptionDate",
+    "extension",
   ],
   financial: ["estimatedValue", "contractualValue", "disbursedAmount"],
   employee: [],
@@ -327,19 +328,28 @@ const UpdateActivity = async (req, res) => {
     });
 
     if (req.body.extensionDate) {
-      const newExtensionNumber = (activity.extension?.length || 0) + 1;
-      activity.extension.push({
-        extensionNumber: newExtensionNumber,
+      if (!Array.isArray(activityToUpdate.extension)) {
+        activityToUpdate.extension = [];
+      }
+
+      if (activityToUpdate.extension.length === 0) {
+        activityToUpdate.extension.push({
+          extensionNumber: 0,
+          extensionDate: activityToUpdate.completionDate,
+        });
+      }
+      const nextExtensionNumber = activityToUpdate.extension.length;
+      activityToUpdate.extension.push({
+        extensionNumber: nextExtensionNumber,
         extensionDate: req.body.extensionDate,
       });
 
-      activity.completionDate = req.body.extensionDate;
+      activityToUpdate.completionDate = req.body.extensionDate;
     }
 
     if (req.body.roaddetails) {
       const road = req.body.roaddetails;
 
-      // Handle arrays by taking the first value or converting to single value
       activityToUpdate.roaddetails = {
         petroleumCompany: Array.isArray(road.petroleumCompany)
           ? road.petroleumCompany[0] || "N/A"
@@ -384,7 +394,7 @@ const UpdateActivity = async (req, res) => {
 
       for (const file of req.files.contractualDocuments) {
         const buffer = file.buffer;
-        // جرب إصلاح الترميز
+
         const originalName = file.originalname;
         const fixedName = Buffer.from(originalName, "latin1").toString("utf8");
         console.log("original name:", originalName);
@@ -392,7 +402,7 @@ const UpdateActivity = async (req, res) => {
 
         const { path, publicUrl } = await uploadPdf(
           buffer,
-          fixedName, // استخدم الاسم المصحح
+          fixedName,
           "activitycontractualdocuments"
         );
 
@@ -405,14 +415,13 @@ const UpdateActivity = async (req, res) => {
 
     console.log("activitypdfs files:", req.files?.activitypdfs);
     if (req.files?.activitypdfs?.length > 0) {
-      // Initialize as array if not already
       if (!Array.isArray(activityToUpdate.activitypdfs)) {
         activityToUpdate.activitypdfs = [];
       }
 
       for (const file of req.files.activitypdfs) {
         const buffer = file.buffer;
-        // إصلاح الترميز
+
         const originalName = file.originalname;
         const fixedName = Buffer.from(originalName, "latin1").toString("utf8");
         console.log("original name:", originalName);
@@ -420,7 +429,7 @@ const UpdateActivity = async (req, res) => {
 
         const { path, publicUrl } = await uploadPdf(
           buffer,
-          fixedName, // استخدم الاسم المصحح
+          fixedName,
           "activitypdfs"
         );
 
@@ -722,11 +731,11 @@ const ExportExcel = async (req, res) => {
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFFFFF00" }, // أصفر
+        fgColor: { argb: "FFFFFF00" },
       };
-      // اختيارية: تخلي الخط Bold
+
       cell.font = { bold: true };
-      // اختيارية: محاذاة النص للوسط
+
       cell.alignment = {
         vertical: "middle",
         horizontal: "center",
@@ -758,7 +767,6 @@ const DeleteDecisionById = async (req, res) => {
   try {
     const { activityCode, decisionId } = req.params;
 
-    // Validate decisionId format
     if (
       !decisionId ||
       !require("mongoose").Types.ObjectId.isValid(decisionId)
@@ -768,7 +776,6 @@ const DeleteDecisionById = async (req, res) => {
         .json(httpStatus.httpFaliureStatus("Invalid decision ID format"));
     }
 
-    // Find the activity and remove the specific decision
     const updatedActivity = await ActivityModel.findOneAndUpdate(
       { activityCode: activityCode.toUpperCase() },
       { $pull: { decision: { _id: decisionId } } },
@@ -781,7 +788,6 @@ const DeleteDecisionById = async (req, res) => {
         .json(httpStatus.httpFaliureStatus("Activity not found"));
     }
 
-    // Check if the decision was actually removed
     const decisionExists = updatedActivity.decision.some(
       (decision) => decision._id.toString() === decisionId
     );
