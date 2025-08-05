@@ -83,7 +83,7 @@ const AddNewActivity = async (req, res) => {
   } catch (error) {
     res.status(500).json(httpStatus.httpErrorStatus(error));
   }
-}; */
+}; ;*/
 
 const GetActivityById = async (req, res) => {
   try {
@@ -345,6 +345,20 @@ const UpdateActivity = async (req, res) => {
       });
 
       activityToUpdate.completionDate = req.body.extensionDate;
+    }
+
+
+    if (req.body.contractDate) {
+      if (!Array.isArray(activityToUpdate.contract)) {
+        activityToUpdate.contract = [];
+      }
+
+      const nextContractNumber = activityToUpdate.contract.length;
+      activityToUpdate.contract.push({
+        contractNumber: nextContractNumber,
+        contractPrice: req.body.contractPrice,
+        contractDate: req.body.contractDate,
+      });
     }
 
     if (req.body.roaddetails) {

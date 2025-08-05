@@ -216,6 +216,25 @@ const activitySchema = new mongoose.Schema(
       default: "",
     },
 
+    contract: [
+      {
+        contractNumber: {
+          type: Number,
+          min: 0,
+        },
+
+        contractPrice: {
+          type: Number,
+          min: 0,
+        },
+
+        contractDate: {
+          type: Date,
+          default: null,
+        },
+      },
+    ],
+
     decision: [
       {
         decisionName: {
