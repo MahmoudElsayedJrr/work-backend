@@ -236,6 +236,9 @@ const updatableFieldsByRole = {
     "suspensionDate",
     "resumptionDate",
     "extension",
+    "contract",
+    "contractDate",
+    "contractPrice",
   ],
   manager: [
     "activityName",
@@ -345,20 +348,6 @@ const UpdateActivity = async (req, res) => {
       });
 
       activityToUpdate.completionDate = req.body.extensionDate;
-    }
-
-
-    if (req.body.contractDate) {
-      if (!Array.isArray(activityToUpdate.contract)) {
-        activityToUpdate.contract = [];
-      }
-
-      const nextContractNumber = activityToUpdate.contract.length;
-      activityToUpdate.contract.push({
-        contractNumber: nextContractNumber,
-        contractPrice: req.body.contractPrice,
-        contractDate: req.body.contractDate,
-      });
     }
 
     if (req.body.roaddetails) {
