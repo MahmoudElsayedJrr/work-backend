@@ -3,6 +3,7 @@ const router = express.Router();
 const controllers = require("../controllers/activity_controllers");
 const decisionControllers = require("../controllers/decision_controllers");
 const contractsControllers = require("../controllers/contracts_controllers");
+const extractController = require("../controllers/extract_controllers");
 const verifyLogin = require("../middlewares/verifyLogin");
 const upload = require("../middlewares/uploads");
 const allowedTo = require("../middlewares/allowedTo");
@@ -29,6 +30,14 @@ router.post(
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.MANAGER),
   controllers.DeleteImageFromActivity
+);
+
+router.post(
+  "/extract/:activityCode",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  upload.array("extractpdfs", 5),
+  extractController.addExtract
 );
 
 router.put(

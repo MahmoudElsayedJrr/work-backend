@@ -299,6 +299,28 @@ const activitySchema = new mongoose.Schema(
         default: "",
       },
     },
+
+    extract: [
+      {
+        extractValue: {
+          type: Number,
+          required: [true, "قيمة المستخلص مطلوبة."],
+          min: [0, "قيمة المستخلص يجب أن تكون أكبر من أو تساوي صفر."],
+        },
+        extractDate: {
+          type: Date,
+          required: [true, "تاريخ المستخلص مطلوب."],
+          default: Date.now,
+        },
+
+        extractPDFs: [
+          {
+            filename: String,
+            path: String,
+          },
+        ],
+      },
+    ],
   },
   {
     timestamps: true,

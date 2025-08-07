@@ -44,26 +44,26 @@ const upload = multer({ storage });
 module.exports = upload;
  */
 
-const multer = require("multer");
+  const multer = require("multer");
 
-const storage = multer.memoryStorage();
+  const storage = multer.memoryStorage();
 
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "application/pdf",
-    ];
-    if (allowedMimeTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("نوع الملف غير مدعوم"));
-    }
-  },
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-});
+  const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+      const allowedMimeTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "application/pdf",
+      ];
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("نوع الملف غير مدعوم"));
+      }
+    },
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  });
 
-module.exports = upload;
+  module.exports = upload;
