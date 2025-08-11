@@ -50,20 +50,21 @@ router.put(
 router.put(
   "/decision/:activityCode",
   verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
   decisionControllers.AddDecisionForActivity
 );
 
 router.delete(
   "/decision/:activityCode/:decisionId",
   verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
   decisionControllers.DeleteDecisionById
 );
 
 router.put(
   "/decision/:activityCode/:decisionId",
   verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
   decisionControllers.updateDecision
 );
 
