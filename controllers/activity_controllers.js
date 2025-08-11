@@ -197,7 +197,10 @@ const updatableFieldsByRole = {
   admin: [
     "activityName",
     "executingCompany",
+    "fundingType",
+    "projectCategory",
     "consultant",
+    "governorate",
     "activityDescription",
     "estimatedValue",
     "contractualValue",
@@ -239,6 +242,9 @@ const updatableFieldsByRole = {
   manager: [
     "activityName",
     "executingCompany",
+    "governorate",
+    "projectCategory",
+    "fundingType",
     "consultant",
     "activityDescription",
     "estimatedValue",
