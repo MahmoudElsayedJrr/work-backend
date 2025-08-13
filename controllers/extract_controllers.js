@@ -49,6 +49,7 @@ const addExtract = async (req, res) => {
     };
 
     activity.extract.push(extractData);
+    activity.disbursedAmount += extractData.extractValue;
     await activity.save();
 
     res

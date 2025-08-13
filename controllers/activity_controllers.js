@@ -195,72 +195,74 @@ const DeleteActivity = async (req, res) => {
 
 const updatableFieldsByRole = {
   admin: [
-    "activityCode",
     "activityName",
     "executingCompany",
-    "consultant",
-    "governorate",
     "fundingType",
     "projectCategory",
+    "consultant",
+    "governorate",
+    "activityDescription",
     "estimatedValue",
     "contractualValue",
-    "disbursedAmount",
-    "assignmentDate",
     "completionDate",
     "receptionDate",
-    "executionStatus",
-    "progress",
     "status",
-    "images",
-    "activityDescription",
-    "activityPdf",
+    "progress",
+    "executivePosition",
     "projectLocationLink",
-    "publishDate",
-    "technicalDecisionDate",
-    "financialDecisionDate",
-    "assignmentOrderDate",
-    "siteHandoverDate",
-    "contractualDocuments",
+    "mediaFiles",
+    "disbursedAmount",
     "petroleumCompany",
     "bitumenQuantity",
     "mc",
     "rc",
     "remainingQuantitiesTons",
     "notes",
-    "decisionName",
-    "decisionType",
-    "decisionPrice",
-    "decisionQuantity",
-    "decisionUnit",
-    "extensionDate",
-    "suspensionDate",
-    "resumptionDate",
-    "extension",
-    "contract",
-    "contractDate",
-    "contractPrice",
-  ],
-  manager: [
-    "activityName",
-    "executingCompany",
-    "consultant",
-    "assignmentDate",
-    "completionDate",
-    "receptionDate",
-    "executionStatus",
-    "progress",
-    "status",
-    "images",
-    "activityDescription",
-    "activityPdf",
-    "projectLocationLink",
     "publishDate",
     "technicalDecisionDate",
     "financialDecisionDate",
     "assignmentOrderDate",
     "siteHandoverDate",
     "contractualDocuments",
+    "extensionDate",
+    "suspensionDate",
+    "resumptionDate",
+    "decisionName",
+    "decisionType",
+    "decisionUnit",
+    "decisionQuantity",
+    "decisionPrice",
+    "contractDate",
+    "contractPrice",
+    "extractDate",
+    "extractValue",
+    "extractPDFs",
   ],
+
+  manager: [
+    "activityName",
+    "executingCompany",
+    "governorate",
+    "projectCategory",
+    "fundingType",
+    "consultant",
+    "activityDescription",
+    "estimatedValue",
+    "contractualValue",
+    "completionDate",
+    "receptionDate",
+  ],
+
+  executive: [
+    "status",
+    "progress",
+    "executivePosition",
+    "projectLocationLink",
+    "mediaFiles",
+  ],
+
+  financial: ["disbursedAmount", "extractDate", "extractValue", "extractPDFs"],
+
   projectManager: [
     "petroleumCompany",
     "bitumenQuantity",
@@ -268,17 +270,28 @@ const updatableFieldsByRole = {
     "rc",
     "remainingQuantitiesTons",
     "notes",
-    "decisionName",
-    "decisionType",
-    "decisionPrice",
-    "decisionQuantity",
-    "decisionUnit",
     "extensionDate",
     "suspensionDate",
     "resumptionDate",
-    "extension",
+    "decisionName",
+    "decisionType",
+    "decisionUnit",
+    "decisionQuantity",
+    "decisionPrice",
+    "contractDate",
+    "contractPrice",
   ],
-  financial: ["estimatedValue", "contractualValue", "disbursedAmount"],
+
+  contractual: [
+    // التعاقدية فقط
+    "publishDate",
+    "technicalDecisionDate",
+    "financialDecisionDate",
+    "assignmentOrderDate",
+    "siteHandoverDate",
+    "contractualDocuments",
+  ],
+
   employee: [],
 };
 
@@ -589,6 +602,144 @@ const DeleteImageFromActivity = async (req, res) => {
 };
 
 const ExportExcel = async (req, res) => {
+  try {
+    const query = {};
+
+    if (req.query.name)
+      query.activityName = { $regex: req.query.name, $options: "i" };
+    if (req.query.governorate) query.governorate = req.query.governorate;
+    if (req.query.activityCode) query.activityCode = req.query.activityCode;
+    if (req.query.status) query.status = req.query.status;
+    if (req.query.fundingType) query.fundingType = req.query.fundingType;
+
+    const activities = await ActivityModel.find(query);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("تقرير المشاريع");
+    worksheet.views = [{ rightToLeft: true }];
+
+    // ==== حساب السنة المالية الحالية ====
+    const now = new Date();
+    const currentYear =
+      now.getMonth() + 1 >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+    const nextYear = currentYear + 1;
+    const fiscalStart = new Date(currentYear, 6, 1); // 1 يوليو
+    const fiscalEnd = new Date(nextYear, 5, 30, 23, 59, 59); // 30 يونيو
+
+    // ==== العناوين ====
+    const headerRow1 = [
+      "رقم المسلسل",
+      "اسم المشروع",
+      "الشركة المنفذة",
+      "القيمة التقديرية",
+      "المخصص المعدل",
+      `المنصرف خلال العام المالي ${nextYear}/${currentYear}`,
+      "إجمالي المنصرف",
+      "نسبة الصرف",
+      "نسبة التنفيذ الحالية",
+      "تاريخ البدء",
+      "تاريخ النهو",
+      "الملاحظات",
+    ];
+
+    worksheet.addRow(headerRow1);
+
+    // ==== إضافة البيانات ====
+    let serial = 1;
+    activities.forEach((activity) => {
+      const estimatedValue = activity.estimatedValue || 0;
+
+      // إجمالي المنصرف
+      const totalDisbursed =
+        activity.extract?.reduce(
+          (sum, ext) => sum + (ext.extractValue || 0),
+          0
+        ) || 0;
+
+      // المنصرف خلال العام المالي الحالي
+      const currentYearDisbursed =
+        activity.extract
+          ?.filter((ext) => {
+            const d = new Date(ext.extractDate);
+            return d >= fiscalStart && d <= fiscalEnd;
+          })
+          .reduce((sum, ext) => sum + (ext.extractValue || 0), 0) || 0;
+
+      worksheet.addRow([
+        serial++,
+        activity.activityName || "",
+        activity.executingCompany || "",
+        estimatedValue,
+        "",
+        currentYearDisbursed,
+        totalDisbursed,
+        estimatedValue > 0
+          ? ((totalDisbursed / estimatedValue) * 100).toFixed(2) + "%"
+          : "0%",
+        activity.progress || "0%",
+        activity.assignmentDate ? new Date(activity.assignmentDate) : "",
+        activity.completionDate ? new Date(activity.completionDate) : "",
+        "",
+      ]);
+    });
+
+    // ==== تنسيق الأعمدة ====
+    const columnsWidths = [10, 50, 25, 20, 15, 20, 20, 15, 15, 20, 20, 40];
+    columnsWidths.forEach((w, i) => {
+      worksheet.getColumn(i + 1).width = w;
+      worksheet.getColumn(i + 1).alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+    });
+
+    // ==== حدود الجدول ====
+    worksheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        cell.alignment = {
+          horizontal: "center",
+          vertical: "middle",
+          wrapText: true,
+        };
+    
+        
+        if (row.number === 1) {
+          cell.font = { bold: true, color: { argb: "FFFFFFFF" } }; // أبيض
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "1F4E78" }, // أزرق غامق
+          };
+        }
+      });
+    });
+    // ==== إخراج الملف ====
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename*=UTF-8''" +
+        encodeURIComponent("تقرير_المشروعات.xlsx")
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("❌ Error in ExportExcel:", error);
+    res.status(500).json({ message: "حدث خطأ أثناء تصدير البيانات" });
+  }
+};
+
+/* const ExportExcel = async (req, res) => {
   console.log("✅ دخلنا على ExportExcel");
   try {
     const query = {};
@@ -721,12 +872,8 @@ const ExportExcel = async (req, res) => {
       },
     ];
     activities.forEach((activity) => {
-      /*   const undisbursedAmount =
-        (activity.contractualValue || 0) - (activity.disbursed || 0); */
-
       worksheet.addRow({
         ...activity.toObject(),
-        // undisbursedAmount,
       });
     });
 
@@ -764,7 +911,7 @@ const ExportExcel = async (req, res) => {
       .status(500)
       .json(httpStatus.httpErrorStatus("حدث خطأ أثناء تصدير البيانات"));
   }
-};
+}; */
 
 const DeleteDecisionById = async (req, res) => {
   try {
