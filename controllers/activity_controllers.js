@@ -203,6 +203,7 @@ const updatableFieldsByRole = {
     "governorate",
     "activityDescription",
     "estimatedValue",
+    "disbursedAmount",
     "contractualValue",
     "completionDate",
     "receptionDate",
@@ -218,6 +219,8 @@ const updatableFieldsByRole = {
     "financialDecisionDate",
     "assignmentOrderDate",
     "siteHandoverDate",
+    "executivePosition",
+    "mediaFiles",
     "contractualDocuments",
     "petroleumCompany",
     "bitumenQuantity",
@@ -287,7 +290,7 @@ const updatableFieldsByRole = {
     "contractDate",
     "contractPrice",
   ],
-  financial: ["estimatedValue", "contractualValue", "disbursedAmount"],
+
   employee: [],
 };
 
@@ -357,6 +360,21 @@ const UpdateActivity = async (req, res) => {
       });
 
       activityToUpdate.completionDate = req.body.extensionDate;
+    }
+
+    if (req.body.disbursedAmount !== undefined) {
+      Console.log(`المنصرف القديم = ${activityToUpdate.disbursedAmount}`);
+      Console.log(`المنصرف الجديد = ${req.body.disbursedAmount}`);
+
+      const totalInvoices = Array.isArray(activityToUpdate.extract)
+        ? activityToUpdate.extract.reduce((sum, inv) => {
+            const val = parseFloat(inv.extractValue) || 0;
+            return sum + val;
+          }, 0)
+        : 0;
+
+      activityToUpdate.disbursedAmount =
+        parseFloat(req.body.disbursedAmount) + totalInvoices;
     }
 
     if (req.body.roaddetails) {
@@ -704,8 +722,7 @@ const ExportExcel = async (req, res) => {
           vertical: "middle",
           wrapText: true,
         };
-    
-        
+
         if (row.number === 1) {
           cell.font = { bold: true, color: { argb: "FFFFFFFF" } }; // أبيض
           cell.fill = {
