@@ -363,8 +363,8 @@ const UpdateActivity = async (req, res) => {
     }
 
     if (req.body.disbursedAmount !== undefined) {
-      Console.log(`المنصرف القديم = ${activityToUpdate.disbursedAmount}`);
-      Console.log(`المنصرف الجديد = ${req.body.disbursedAmount}`);
+      console.log(`المنصرف القديم = ${activityToUpdate.disbursedAmount}`);
+      console.log(`المنصرف الجديد المدخل = ${req.body.disbursedAmount}`);
 
       const totalInvoices = Array.isArray(activityToUpdate.extract)
         ? activityToUpdate.extract.reduce((sum, inv) => {
