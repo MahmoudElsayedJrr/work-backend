@@ -1,10 +1,21 @@
-/* const multer = require("multer");
+const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
 // Define upload paths
-const imageUploadPath = path.join(__dirname, "..", "uploads", "activities");
-const pdfUploadPath = path.join(__dirname, "..", "uploads", "pdfs");
+const imageUploadPath = path.join(__dirname, "..", "uploads", "activityimages");
+const activitypdfsUploadPath = path.join(
+  __dirname,
+  "..",
+  "uploads",
+  "activitypdfs"
+);
+const extractpdfsUploadPath = path.join(
+  __dirname,
+  "..",
+  "uploads",
+  "extractpdfs"
+);
 const contractualDocumentsUploadPath = path.join(
   __dirname,
   "..",
@@ -12,21 +23,25 @@ const contractualDocumentsUploadPath = path.join(
   "contractualDocuments"
 );
 
-
-[imageUploadPath, pdfUploadPath, contractualDocumentsUploadPath].forEach(
-  (folderPath) => {
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true });
-    }
+[
+  imageUploadPath,
+  activitypdfsUploadPath,
+  contractualDocumentsUploadPath,
+  extractpdfsUploadPath,
+].forEach((folderPath) => {
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: true });
   }
-);
+});
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === "images") {
       cb(null, imageUploadPath);
-    } else if (file.fieldname === "activityPdf") {
-      cb(null, pdfUploadPath);
+    } else if (file.fieldname === "activitypdfs") {
+      cb(null, activitypdfsUploadPath);
+    } else if (file.fieldname === "extractpdfs") {
+      cb(null, extractpdfsUploadPath);
     } else if (file.fieldname === "contractualDocuments") {
       cb(null, contractualDocumentsUploadPath);
     } else {
@@ -42,9 +57,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 module.exports = upload;
- */
 
-  const multer = require("multer");
+/*   const multer = require("multer");
 
   const storage = multer.memoryStorage();
 
@@ -66,4 +80,4 @@ module.exports = upload;
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   });
 
-  module.exports = upload;
+  module.exports = upload; */

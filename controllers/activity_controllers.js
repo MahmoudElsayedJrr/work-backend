@@ -3,8 +3,9 @@ const httpStatus = require("../utils/http_status");
 const supabase = require("../utils/supabase");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
-const uploadImage = require("../utils/uploadImage");
-const uploadPdf = require("../utils/uploadPDF");
+const saveImageLocally = require("../utils/uploadImage");
+const savePdfLocally = require("../utils/uploadPDF");
+const path = require("path");
 
 const AddNewActivity = async (req, res) => {
   console.log("Received request body:", req.body);
@@ -108,7 +109,6 @@ const DeleteActivity = async (req, res) => {
   try {
     const { activityCode } = req.params;
 
-    // أولاً: ابحث عن المشروع قبل حذفه
     const activity = await ActivityModel.findOne({
       activityCode: activityCode.toUpperCase(),
     });
@@ -119,62 +119,26 @@ const DeleteActivity = async (req, res) => {
         .json(httpStatus.httpFaliureStatus("Activity not found"));
     }
 
-    // حذف الصور من Supabase
-    if (activity.images && activity.images.length > 0) {
-      const imageFiles = activity.images.map((imagePath) => {
-        const fileName = decodeURIComponent(imagePath.split("/").pop());
-        return fileName;
-      });
-
-      if (imageFiles.length > 0) {
-        const { error: imageError } = await supabase.storage
-          .from("activityimages")
-          .remove(imageFiles);
-
-        if (imageError) {
-          console.error("Error deleting images:", imageError);
+    const deleteFiles = (files) => {
+      if (!Array.isArray(files)) return;
+      files.forEach((file) => {
+        const relativePath = file.path || file; // لو path موجود، استخدمه
+        const filePath = path.join(
+          process.cwd(),
+          relativePath.replace(/^\//, "")
+        );
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        } else {
+          console.warn("File not found on disk:", filePath);
         }
-      }
-    }
-
-    // حذف ملفات PDF من activitypdfs
-    if (activity.activitypdfs && activity.activitypdfs.length > 0) {
-      const pdfFiles = activity.activitypdfs.map((pdf) => {
-        const fileName = decodeURIComponent(pdf.path.split("/").pop());
-        return fileName;
       });
+    };
 
-      if (pdfFiles.length > 0) {
-        const { error: pdfError } = await supabase.storage
-          .from("activitypdfs")
-          .remove(pdfFiles);
-
-        if (pdfError) {
-          console.error("Error deleting activitypdfs:", pdfError);
-        }
-      }
-    }
-
-    // حذف ملفات PDF من contractualDocuments
-    if (
-      activity.contractualDocuments &&
-      activity.contractualDocuments.length > 0
-    ) {
-      const contractFiles = activity.contractualDocuments.map((doc) => {
-        const fileName = decodeURIComponent(doc.path.split("/").pop());
-        return fileName;
-      });
-
-      if (contractFiles.length > 0) {
-        const { error: contractError } = await supabase.storage
-          .from("activitycontractualdocuments")
-          .remove(contractFiles);
-
-        if (contractError) {
-          console.error("Error deleting contractualDocuments:", contractError);
-        }
-      }
-    }
+    deleteFiles(activity.images);
+    deleteFiles(activity.activitypdfs);
+    deleteFiles(activity.contractualDocuments);
+    deleteFiles(activity.extractpdfs);
 
     await ActivityModel.findOneAndDelete({
       activityCode: activityCode.toUpperCase(),
@@ -184,7 +148,7 @@ const DeleteActivity = async (req, res) => {
       .status(200)
       .json(
         httpStatus.httpSuccessStatus(
-          "Activity and all its files deleted successfully"
+          "Activity and its files deleted successfully"
         )
       );
   } catch (error) {
@@ -410,13 +374,8 @@ const UpdateActivity = async (req, res) => {
       if (!Array.isArray(activityToUpdate.images)) {
         activityToUpdate.images = [];
       }
-
       for (const file of req.files.images) {
-        const buffer = file.buffer;
-        const originalName = file.originalname;
-
-        const { path, publicUrl } = await uploadImage(buffer, originalName);
-
+        const { publicUrl, originalName } = await saveImageLocally(file);
         activityToUpdate.images.push(publicUrl);
       }
     }
@@ -425,23 +384,13 @@ const UpdateActivity = async (req, res) => {
       if (!Array.isArray(activityToUpdate.contractualDocuments)) {
         activityToUpdate.contractualDocuments = [];
       }
-
       for (const file of req.files.contractualDocuments) {
-        const buffer = file.buffer;
-
-        const originalName = file.originalname;
-        const fixedName = Buffer.from(originalName, "latin1").toString("utf8");
-        console.log("original name:", originalName);
-        console.log("fixed name:", fixedName);
-
-        const { path, publicUrl } = await uploadPdf(
-          buffer,
-          fixedName,
-          "activitycontractualdocuments"
+        const { publicUrl, originalName } = await savePdfLocally(
+          file,
+          "contractualDocuments"
         );
-
         activityToUpdate.contractualDocuments.push({
-          filename: fixedName,
+          filename: originalName,
           path: publicUrl,
         });
       }
@@ -452,23 +401,13 @@ const UpdateActivity = async (req, res) => {
       if (!Array.isArray(activityToUpdate.activitypdfs)) {
         activityToUpdate.activitypdfs = [];
       }
-
       for (const file of req.files.activitypdfs) {
-        const buffer = file.buffer;
-
-        const originalName = file.originalname;
-        const fixedName = Buffer.from(originalName, "latin1").toString("utf8");
-        console.log("original name:", originalName);
-        console.log("fixed name:", fixedName);
-
-        const { path, publicUrl } = await uploadPdf(
-          buffer,
-          fixedName,
+        const { publicUrl, originalName } = await savePdfLocally(
+          file,
           "activitypdfs"
         );
-
         activityToUpdate.activitypdfs.push({
-          filename: fixedName,
+          filename: originalName,
           path: publicUrl,
         });
       }
@@ -505,6 +444,20 @@ const GetAllActivites = async (req, res) => {
       filter.fundingType = query.fundingType;
     }
 
+    if (query.projectCategory && query.projectCategory !== "الكل") {
+      filter.projectCategory = query.projectCategory;
+    }
+
+    if (query.progressMin || query.progressMax) {
+      filter.progress = {};
+      if (query.progressMin) {
+        filter.progress.$gte = Number(query.progressMin);
+      }
+      if (query.progressMax) {
+        filter.progress.$lte = Number(query.progressMax);
+      }
+    }
+
     //console.log("Filtering with:", filter);
 
     const activities = await ActivityModel.find(filter, { __v: 0, _id: 0 });
@@ -533,14 +486,10 @@ const DeletePdfFromActivity = async (req, res) => {
     const { activityCode, pdfPath } = req.body;
     const { bucketName } = req.params;
 
-    console.log("bucketName =>", bucketName);
-
     const fieldMap = {
       activitypdfs: "activitypdfs",
-      activitycontractualdocuments: "contractualDocuments",
+      contractualdocuments: "contractualDocuments",
     };
-
-    console.log("Available buckets =>", Object.keys(fieldMap));
 
     const fieldName = fieldMap[bucketName];
     if (!fieldName) {
@@ -560,21 +509,16 @@ const DeletePdfFromActivity = async (req, res) => {
     }
 
     const fileName = decodeURIComponent(pdfPath.split("/").pop());
+    const filePath = path.join(process.cwd(), "uploads", bucketName, fileName);
 
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .remove([fileName]);
-
-    if (error) {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    } else {
       return res
-        .status(500)
-        .json(
-          httpStatus.httpErrorStatus(
-            `Failed to delete from Supabase: ${error.message}`
-          )
-        );
+        .status(404)
+        .json(httpStatus.httpFaliureStatus("File not found in uploads"));
     }
-    console.log(fieldName);
+
     activity[fieldName] = activity[fieldName].filter(
       (pdf) => pdf.path !== pdfPath
     );
@@ -596,18 +540,26 @@ const DeleteImageFromActivity = async (req, res) => {
       activityCode: activityCode.toUpperCase(),
     });
 
-    if (!activity)
+    if (!activity) {
       return res
         .status(404)
         .json(httpStatus.httpFaliureStatus("Project not found"));
+    }
 
     const fileName = decodeURIComponent(imagePath.split("/").pop());
-    const { error } = await supabase.storage.from("images").remove([fileName]);
+    const filePath = path.join(
+      process.cwd(),
+      "uploads",
+      "activityimages",
+      fileName
+    );
 
-    if (error) {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    } else {
       return res
-        .status(500)
-        .json(httpStatus.httpErrorStatus("Failed to delete from Supabase"));
+        .status(404)
+        .json(httpStatus.httpFaliureStatus("File not found in uploads"));
     }
 
     activity.images = activity.images.filter((img) => img !== imagePath);

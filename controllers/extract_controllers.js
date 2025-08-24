@@ -3,8 +3,7 @@ const httpStatus = require("../utils/http_status");
 const supabase = require("../utils/supabase");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
-const uploadImage = require("../utils/uploadImage");
-const uploadPdf = require("../utils/uploadPDF");
+const savePdfLocally = require("../utils/uploadPDF");
 
 const addExtract = async (req, res) => {
   try {
@@ -27,17 +26,19 @@ const addExtract = async (req, res) => {
           const fixedName = Buffer.from(file.originalname, "latin1").toString(
             "utf8"
           );
-          const uploadedFile = await uploadPdf(
-            file.buffer,
-            fixedName,
+          const { publicUrl, originalName } = await savePdfLocally(
+            file,
             "extractpdfs"
           );
-          extractPDFs.push({ path: uploadedFile.publicUrl });
+          extractPDFs.push({
+            filename: originalName,
+            path: publicUrl,
+          });
         } catch (uploadError) {
-          console.error("Error uploading file:", uploadError);
+          console.error("Error saving file:", uploadError);
           return res
             .status(500)
-            .json(httpStatus.httpErrorStatus("حدث خطأ في رفع الملف"));
+            .json(httpStatus.httpErrorStatus("Can not save file"));
         }
       }
     }

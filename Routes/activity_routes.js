@@ -84,6 +84,11 @@ router.put(
     { name: "activitypdfs", maxCount: 3 },
     { name: "contractualDocuments", maxCount: 3 },
   ]),
+  (req, res, next) => {
+    console.log("FILES RECEIVED >>>", req.files);
+    console.log("BODY RECEIVED >>>", req.body);
+    next();
+  },
   controllers.UpdateActivity
 );
 
