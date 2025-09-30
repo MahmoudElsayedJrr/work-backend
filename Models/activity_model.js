@@ -121,7 +121,10 @@ const activitySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-
+    fiscalYear: {
+      type: String,
+      default: null,
+    },
     extension: [
       {
         extensionNumber: {

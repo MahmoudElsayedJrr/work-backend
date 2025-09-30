@@ -481,6 +481,23 @@ const GetAllActivites = async (req, res) => {
   }
 };
 
+const getTotalDisbursed = async (req, res) => {
+  try {
+    const activities = await ActivityModel.find({}, "disbursedAmount"); // هيرجع كل المشاريع بالحقل ده بس
+
+    // نجمع القيم
+    const totalDisbursed = activities.reduce(
+      (sum, activity) => sum + (activity.disbursedAmount || 0),
+      0
+    );
+
+    res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
+  } catch (error) {
+    res.status(500).json(httpStatus.httpErrorStatus(error.message));
+  }
+  // res.json(httpStatus.httpSuccessStatus({ activities }));
+};
+
 const DeletePdfFromActivity = async (req, res) => {
   try {
     const { activityCode, pdfPath } = req.body;
@@ -942,4 +959,5 @@ module.exports = {
   DeleteImageFromActivity,
   DeletePdfFromActivity,
   ExportExcel,
+  getTotalDisbursed,
 };

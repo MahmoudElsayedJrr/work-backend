@@ -68,6 +68,8 @@ router.put(
   decisionControllers.updateDecision
 );
 
+router.get("/total-disbursed", controllers.getTotalDisbursed);
+
 router.get("/:activityCode", controllers.GetActivityById);
 router.delete(
   "/:activityCode",
