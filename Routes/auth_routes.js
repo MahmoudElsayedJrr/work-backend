@@ -7,8 +7,8 @@ const userRoles = require("../utils/user_roles");
 
 router.post(
   "/register",
-  verifyLogin,
-  allowedTo(userRoles.ADMIN),
+  //verifyLogin,
+  // allowedTo(userRoles.ADMIN),
   controllers.register
 );
 router.post("/login", controllers.login);
