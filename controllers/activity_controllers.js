@@ -202,6 +202,7 @@ const updatableFieldsByRole = {
     "extractDate",
     "extractValue",
     "extractPDFs",
+    "fiscalYear",
   ],
 
   manager: [
@@ -218,6 +219,7 @@ const updatableFieldsByRole = {
     "contractualValue",
     "completionDate",
     "receptionDate",
+    "fiscalYear",
   ],
 
   executive: [
@@ -436,6 +438,10 @@ const GetAllActivites = async (req, res) => {
       filter.status = query.status;
     }
 
+    if (query.fiscalYear && query.fiscalYear !== "الكل") {
+      filter.fiscalYear = query.fiscalYear;
+    }
+
     if (query.activityCode) {
       filter.activityCode = query.activityCode.toUpperCase();
     }
@@ -458,17 +464,10 @@ const GetAllActivites = async (req, res) => {
       }
     }
 
-    //console.log("Filtering with:", filter);
+    console.log("Filtering with:", filter);
 
     const activities = await ActivityModel.find(filter, { __v: 0, _id: 0 });
     const activityCount = await ActivityModel.countDocuments(filter);
-
-    /*   if (activities.length > 0) {
-      console.log(
-        "شكل المسار المحفوظ في قاعدة البيانات:",
-        activities[0].images
-      );
-    } */
 
     const responseData = {
       total: activityCount,
