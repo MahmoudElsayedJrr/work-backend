@@ -480,6 +480,86 @@ const GetAllActivites = async (req, res) => {
   }
 };
 
+const GetActivitiesStatistics = async (req, res) => {
+  try {
+    const query = req.query;
+    const matchFilter = {};
+
+    // Apply filters
+    if (query.name) {
+      matchFilter.activityName = { $regex: query.name, $options: "i" };
+    }
+    if (query.governorate && query.governorate !== "الكل") {
+      matchFilter.governorate = query.governorate;
+    }
+    if (query.status && query.status !== "الكل") {
+      matchFilter.status = query.status;
+    }
+    if (query.fiscalYear && query.fiscalYear !== "الكل") {
+      matchFilter.fiscalYear = query.fiscalYear;
+    }
+    if (query.activityCode) {
+      matchFilter.activityCode = query.activityCode.toUpperCase();
+    }
+    if (query.fundingType && query.fundingType !== "الكل") {
+      matchFilter.fundingType = query.fundingType;
+    }
+    if (query.projectCategory && query.projectCategory !== "الكل") {
+      matchFilter.projectCategory = query.projectCategory;
+    }
+    if (query.progressMin || query.progressMax) {
+      matchFilter.progress = {};
+      if (query.progressMin) {
+        matchFilter.progress.$gte = Number(query.progressMin);
+      }
+      if (query.progressMax) {
+        matchFilter.progress.$lte = Number(query.progressMax);
+      }
+    }
+
+    const statistics = await ActivityModel.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: "$governorate",
+          governorate: { $first: "$governorate" },
+          totalActivities: { $sum: 1 },
+          completed: {
+            $sum: { $cond: [{ $eq: ["$status", "مكتمل"] }, 1, 0] },
+          },
+          withdrawn: {
+            $sum: { $cond: [{ $eq: ["$status", "مسحوب"] }, 1, 0] },
+          },
+          inProgress: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "قيد التنفيذ"] }, 1, 0],
+            },
+          },
+          suspended: {
+            $sum: { $cond: [{ $eq: ["$status", "متوقف"] }, 1, 0] },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          governorate: 1,
+          totalActivities: 1,
+          completed: 1,
+          withdrawn: 1,
+          inProgress: 1,
+          suspended: 1,
+        },
+      },
+      { $sort: { governorate: 1 } },
+    ]);
+
+    res.status(200).json(httpStatus.httpSuccessStatus(statistics));
+  } catch (error) {
+    res.status(500).json(httpStatus.httpErrorStatus(error.message));
+  }
+};
+
 const getTotalDisbursed = async (req, res) => {
   try {
     const activities = await ActivityModel.find({}, "disbursedAmount"); // هيرجع كل المشاريع بالحقل ده بس
@@ -959,4 +1039,5 @@ module.exports = {
   DeletePdfFromActivity,
   ExportExcel,
   getTotalDisbursed,
+  GetActivitiesStatistics,
 };
