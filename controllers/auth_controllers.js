@@ -42,7 +42,7 @@ const login = async (req, res) => {
     return res
       .status(404)
       .json(
-        httpStatus.httpFaliureStatus("الرقم القومي أو كلمة المرور غير صحيحة")
+        httpStatus.httpFaliureStatus(" اسم المستخدم أو كلمة المرور غير صحيحة")
       );
   }
   const isPasswordValid = await bcrypt.compare(password, employee.password);

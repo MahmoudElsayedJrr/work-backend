@@ -16,6 +16,11 @@ app.use(express.json());
 app.use(cors());
 connectDB();
 
+/* const options = {
+  key: fs.readFileSync('server.key'),
+  cert: fs.readFileSync('server.cert')
+}; */
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/auth", authRoutes);
