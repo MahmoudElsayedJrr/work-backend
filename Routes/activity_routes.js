@@ -18,7 +18,7 @@ router.post(
 );
 
 router.get("/", verifyLogin, controllers.GetAllActivites);
-router.get("/statistics", controllers.GetActivitiesStatistics);
+router.get("/statistics", verifyLogin, controllers.GetActivitiesStatistics);
 router.post(
   "/delete-pdf/:bucketName",
   verifyLogin,
