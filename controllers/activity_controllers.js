@@ -122,7 +122,7 @@ const DeleteActivity = async (req, res) => {
     const deleteFiles = (files) => {
       if (!Array.isArray(files)) return;
       files.forEach((file) => {
-        const relativePath = file.path || file; // لو path موجود، استخدمه
+        const relativePath = file.path || file;
         const filePath = path.join(
           process.cwd(),
           relativePath.replace(/^\//, "")
@@ -589,6 +589,7 @@ const DeletePdfFromActivity = async (req, res) => {
 
     const fieldName = fieldMap[bucketName];
     if (!fieldName) {
+      console.log("Bucket name received:", bucketName);
       return res
         .status(400)
         .json(httpStatus.httpFaliureStatus("Invalid bucket name"));
@@ -610,6 +611,7 @@ const DeletePdfFromActivity = async (req, res) => {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     } else {
+      console.log("File not found at path:", filePath);
       return res
         .status(404)
         .json(httpStatus.httpFaliureStatus("File not found in uploads"));
