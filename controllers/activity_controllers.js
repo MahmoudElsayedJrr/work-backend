@@ -584,7 +584,7 @@ const DeletePdfFromActivity = async (req, res) => {
 
     const fieldMap = {
       activitypdfs: "activitypdfs",
-      contractualdocuments: "contractualDocuments",
+      contractualDocuments: "contractualDocuments",
     };
 
     const fieldName = fieldMap[bucketName];
