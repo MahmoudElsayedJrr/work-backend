@@ -48,7 +48,7 @@ const addExtract = async (req, res) => {
       extractDate: extractDate ? new Date(extractDate) : new Date(),
       extractPDFs: extractPDFs,
     };
-    activity.disbursedAmount += parseFloat(extractValue);
+
     activity.extract.push(extractData);
     activity.disbursedAmount += extractData.extractValue;
     await activity.save();

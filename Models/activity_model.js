@@ -393,6 +393,67 @@ activitySchema.pre("save", function (next) {
   next();
 });
 
+activitySchema.pre("findOneAndUpdate", async function (next) {
+  const update = this.getUpdate();
+
+  if (update.$set) {
+    const progress = parseFloat(update.$set.progress);
+
+    if (!isNaN(progress)) {
+      if (
+        progress >= 100 &&
+        update.$set.status &&
+        !["مسحوب", "متوقف"].includes(update.$set.status)
+      ) {
+        update.$set.status = "مكتمل";
+        console.log(
+          `[findOneAndUpdate] تم تحديث الحالة إلى "مكتمل" (النسبة: ${progress}%)`
+        );
+      } else if (progress < 100 && update.$set.status === "مكتمل") {
+        update.$set.status = "قيد التنفيذ";
+        console.log(
+          `[findOneAndUpdate] تم تحديث الحالة إلى "قيد التنفيذ" (النسبة: ${progress}%)`
+        );
+      }
+    }
+  } else if (update.progress !== undefined) {
+    const progress = parseFloat(update.progress);
+
+    if (!isNaN(progress)) {
+      if (progress >= 100 && !["مسحوب", "متوقف"].includes(update.status)) {
+        update.status = "مكتمل";
+        console.log(
+          `[findOneAndUpdate] تم تحديث الحالة إلى "مكتمل" (النسبة: ${progress}%)`
+        );
+      } else if (progress < 100 && update.status === "مكتمل") {
+        update.status = "قيد التنفيذ";
+        console.log(
+          `[findOneAndUpdate] تم تحديث الحالة إلى "قيد التنفيذ" (النسبة: ${progress}%)`
+        );
+      }
+    }
+  }
+
+  next();
+});
+
+activitySchema.pre("updateMany", async function (next) {
+  const update = this.getUpdate();
+
+  if (update.$set && update.$set.progress !== undefined) {
+    const progress = parseFloat(update.$set.progress);
+
+    if (!isNaN(progress) && progress >= 100) {
+      update.$set.status = "مكتمل";
+      console.log(
+        `[updateMany] تم تحديث الحالة إلى "مكتمل" للمشاريع (النسبة: ${progress}%)`
+      );
+    }
+  }
+
+  next();
+});
+
 const Activity = mongoose.model("Activity", activitySchema);
 
 module.exports = Activity;
