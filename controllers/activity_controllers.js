@@ -538,6 +538,12 @@ const GetActivitiesStatistics = async (req, res) => {
           suspended: {
             $sum: { $cond: [{ $eq: ["$status", "متوقف"] }, 1, 0] },
           },
+          initialDelivery: {
+            $sum: { $cond: [{ $eq: ["$status", "تسليم ابتدائي"] }, 1, 0] },
+          },
+          finalDelivery: {
+            $sum: { $cond: [{ $eq: ["$status", "تسليم نهائي"] }, 1, 0] },
+          },
         },
       },
       {
@@ -549,6 +555,8 @@ const GetActivitiesStatistics = async (req, res) => {
           withdrawn: 1,
           inProgress: 1,
           suspended: 1,
+          initialDelivery: 1,
+          finalDelivery: 1,
         },
       },
       { $sort: { governorate: 1 } },

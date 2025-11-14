@@ -3,7 +3,7 @@ const Activity = require("../Models/activity_model");
 
 async function fixCompletedProjects() {
   try {
-    const MONGODB_URI = "mongodb://localhost:27017/your-database-name";
+    const MONGODB_URI = "mongodb://127.0.0.1:27017/work";
     await mongoose.connect(MONGODB_URI);
 
     console.log("🔗 تم الاتصال بقاعدة البيانات");
