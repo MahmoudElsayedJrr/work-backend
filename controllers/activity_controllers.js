@@ -585,6 +585,21 @@ const getTotalDisbursed = async (req, res) => {
   // res.json(httpStatus.httpSuccessStatus({ activities }));
 };
 
+const getTotalContractualValue = async (req, res) => {
+  try {
+    const activities = await ActivityModel.find({}, "contractualValue"); //
+
+    const totalDisbursed = activities.reduce(
+      (sum, activity) => sum + (activity.disbursedAmount || 0),
+      0
+    );
+
+    res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
+  } catch (error) {
+    res.status(500).json(httpStatus.httpErrorStatus(error.message));
+  }
+};
+
 const DeletePdfFromActivity = async (req, res) => {
   try {
     const { activityCode, pdfPath } = req.body;
@@ -814,180 +829,6 @@ const ExportExcel = async (req, res) => {
   }
 };
 
-/* const ExportExcel = async (req, res) => {
-  console.log("✅ دخلنا على ExportExcel");
-  try {
-    const query = {};
-
-    if (req.query.name) {
-      query.activityName = { $regex: req.query.name, $options: "i" };
-    }
-    if (req.query.governorate) {
-      query.governorate = req.query.governorate;
-    }
-    if (req.query.activityCode) {
-      query.activityCode = req.query.activityCode;
-    }
-    if (req.query.status) {
-      query.status = req.query.status;
-    }
-    if (req.query.fundingType) {
-      query.fundingType = req.query.fundingType;
-    }
-
-    const activities = await ActivityModel.find(query);
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("مشروعات");
-    worksheet.views = [{ rightToLeft: true }];
-
-    // ✅ أولاً: عرّف الأعمدة
-    worksheet.columns = [
-      {
-        header: "كود المشروع",
-        key: "activityCode",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "اسم المشروع",
-        key: "activityName",
-        width: 25,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "وصف المشروع",
-        key: "activityDescription",
-        width: 30,
-        alignment: { wrapText: true },
-      },
-
-      {
-        header: "نوع التمويل",
-        key: "fundingType",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-
-      {
-        header: "فئة المشروع",
-        key: "projectCategory",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "المحافظة",
-        key: "governorate",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "الشركة المنفذة",
-        key: "executingCompany",
-        width: 25,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "الاستشاري",
-        key: "consultant",
-        width: 25,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "القيمة التقديرية",
-        key: "estimatedValue",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "القيمة التعاقدية",
-        key: "contractualValue",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "المنصرف",
-        key: "disbursedAmount",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-      // { header: "لم يتم صرفه", key: "undisbursedAmount", width: 20, alignment: { wrapText: true } },
-      {
-        header: "تاريخ الإسناد",
-        key: "assignmentDate",
-        width: 20,
-        style: { numFmt: "dd/mm/yyyy" },
-        alignment: { wrapText: true },
-      },
-      {
-        header: "تاريخ النهو",
-        key: "completionDate",
-        width: 20,
-        style: { numFmt: "dd/mm/yyyy" },
-        alignment: { wrapText: true },
-      },
-      {
-        header: "تاريخ الاستلام",
-        key: "receptionDate",
-        width: 20,
-        style: { numFmt: "dd/mm/yyyy" },
-        alignment: { wrapText: true },
-      },
-      {
-        header: "حالة المشروع",
-        key: "status",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-      {
-        header: "نسبة الإنجاز",
-        key: "progress",
-        width: 20,
-        alignment: { wrapText: true },
-      },
-    ];
-    activities.forEach((activity) => {
-      worksheet.addRow({
-        ...activity.toObject(),
-      });
-    });
-
-    worksheet.getRow(1).eachCell((cell) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFFFFF00" },
-      };
-
-      cell.font = { bold: true };
-
-      cell.alignment = {
-        vertical: "middle",
-        horizontal: "center",
-        wrapText: true,
-      };
-    });
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename*=UTF-8''" +
-        encodeURIComponent("تقرير_المشروعات.xlsx")
-    );
-
-    await workbook.xlsx.write(res);
-    res.end();
-  } catch (error) {
-    console.error("❌ Error in ExportExcel:", error);
-    res
-      .status(500)
-      .json(httpStatus.httpErrorStatus("حدث خطأ أثناء تصدير البيانات"));
-  }
-}; */
-
 const DeleteDecisionById = async (req, res) => {
   try {
     const { activityCode, decisionId } = req.params;
@@ -1050,4 +891,5 @@ module.exports = {
   ExportExcel,
   getTotalDisbursed,
   GetActivitiesStatistics,
+  getTotalContractualValue,
 };

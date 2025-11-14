@@ -40,6 +40,16 @@ router.post(
   upload.array("extractpdfs", 5),
   extractController.addExtract
 );
+router.put(
+  "/extract/:extractId",
+  upload.array("extractpdfs"),
+  extractController.updateExtract
+);
+router.delete("/extract/:extractId", extractController.deleteExtract);
+router.delete(
+  "/extract/:extractId/pdf/:pdfId",
+  extractController.deleteExtractPDF
+);
 
 router.put(
   "/contract/:activityCode",
@@ -70,6 +80,7 @@ router.put(
 );
 
 router.get("/total-disbursed", controllers.getTotalDisbursed);
+router.get("/total-contractualValue", controllers.getTotalContractualValue);
 
 router.get("/:activityCode", controllers.GetActivityById);
 router.delete(
