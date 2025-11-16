@@ -770,8 +770,9 @@ const ExportExcel = async (req, res) => {
         serial++,
         activity.activityName || "",
         activity.executingCompany || "",
-        estimatedValue,
-        "",
+        activity.contractualValue || 0,
+        activity.estimatedValue || 0,
+
         currentYearDisbursed,
         totalDisbursed,
         estimatedValue > 0
