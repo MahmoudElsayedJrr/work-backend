@@ -527,6 +527,9 @@ const GetActivitiesStatistics = async (req, res) => {
           completed: {
             $sum: { $cond: [{ $eq: ["$status", "مكتمل"] }, 1, 0] },
           },
+          begin: {
+            $sum: { $cond: [{ $eq: ["$status", "تحت الطرح"] }, 1, 0] },
+          },
           withdrawn: {
             $sum: { $cond: [{ $eq: ["$status", "مسحوب"] }, 1, 0] },
           },
@@ -551,6 +554,7 @@ const GetActivitiesStatistics = async (req, res) => {
           _id: 0,
           governorate: 1,
           totalActivities: 1,
+          begin: 1,
           completed: 1,
           withdrawn: 1,
           inProgress: 1,
