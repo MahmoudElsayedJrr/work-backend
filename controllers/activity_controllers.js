@@ -424,45 +424,46 @@ const UpdateActivity = async (req, res) => {
   }
 };
 
+const buildActivityFilter = (query) => {
+  const filter = {};
+
+  if (query.name) {
+    filter.activityName = { $regex: query.name, $options: "i" };
+  }
+  if (query.governorate && query.governorate !== "الكل") {
+    filter.governorate = query.governorate;
+  }
+  if (query.status && query.status !== "الكل") {
+    filter.status = query.status;
+  }
+  if (query.fiscalYear && query.fiscalYear !== "الكل") {
+    filter.fiscalYear = query.fiscalYear;
+  }
+  if (query.activityCode) {
+    filter.activityCode = query.activityCode.toUpperCase();
+  }
+  if (query.fundingType && query.fundingType !== "الكل") {
+    filter.fundingType = query.fundingType;
+  }
+  if (query.projectCategory && query.projectCategory !== "الكل") {
+    filter.projectCategory = query.projectCategory;
+  }
+  if (query.progressMin || query.progressMax) {
+    filter.progress = {};
+    if (query.progressMin) {
+      filter.progress.$gte = Number(query.progressMin);
+    }
+    if (query.progressMax) {
+      filter.progress.$lte = Number(query.progressMax);
+    }
+  }
+
+  return filter;
+};
+
 const GetAllActivites = async (req, res) => {
   try {
-    const query = req.query;
-    const filter = {};
-    if (query.name) {
-      filter.activityName = { $regex: query.name, $options: "i" };
-    }
-    if (query.governorate && query.governorate !== "الكل") {
-      filter.governorate = query.governorate;
-    }
-    if (query.status && query.status !== "الكل") {
-      filter.status = query.status;
-    }
-
-    if (query.fiscalYear && query.fiscalYear !== "الكل") {
-      filter.fiscalYear = query.fiscalYear;
-    }
-
-    if (query.activityCode) {
-      filter.activityCode = query.activityCode.toUpperCase();
-    }
-
-    if (query.fundingType && query.fundingType !== "الكل") {
-      filter.fundingType = query.fundingType;
-    }
-
-    if (query.projectCategory && query.projectCategory !== "الكل") {
-      filter.projectCategory = query.projectCategory;
-    }
-
-    if (query.progressMin || query.progressMax) {
-      filter.progress = {};
-      if (query.progressMin) {
-        filter.progress.$gte = Number(query.progressMin);
-      }
-      if (query.progressMax) {
-        filter.progress.$lte = Number(query.progressMax);
-      }
-    }
+    const filter = buildActivityFilter(req.query);
 
     console.log("Filtering with:", filter);
 
@@ -574,9 +575,10 @@ const GetActivitiesStatistics = async (req, res) => {
 
 const getTotalDisbursed = async (req, res) => {
   try {
-    const activities = await ActivityModel.find({}, "disbursedAmount"); // هيرجع كل المشاريع بالحقل ده بس
+    const filter = buildActivityFilter(req.query);
 
-    // نجمع القيم
+    const activities = await ActivityModel.find(filter, "disbursedAmount");
+
     const totalDisbursed = activities.reduce(
       (sum, activity) => sum + (activity.disbursedAmount || 0),
       0
@@ -586,19 +588,20 @@ const getTotalDisbursed = async (req, res) => {
   } catch (error) {
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
-  // res.json(httpStatus.httpSuccessStatus({ activities }));
 };
 
 const getTotalContractualValue = async (req, res) => {
   try {
-    const activities = await ActivityModel.find({}, "contractualValue"); //
+    const filter = buildActivityFilter(req.query);
 
-    const totalDisbursed = activities.reduce(
-      (sum, activity) => sum + (activity.disbursedAmount || 0),
+    const activities = await ActivityModel.find(filter, "contractualValue");
+
+    const totalContractualValue = activities.reduce(
+      (sum, activity) => sum + (activity.contractualValue || 0),
       0
     );
 
-    res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
+    res.json(httpStatus.httpSuccessStatus({ totalContractualValue }));
   } catch (error) {
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
@@ -706,6 +709,9 @@ const ExportExcel = async (req, res) => {
     if (req.query.activityCode) query.activityCode = req.query.activityCode;
     if (req.query.status) query.status = req.query.status;
     if (req.query.fundingType) query.fundingType = req.query.fundingType;
+    if (req.query.projectCategory)
+      query.projectCategory = req.query.projectCategory;
+    if (req.query.fiscalYear) query.fiscalYear = req.query.fiscalYear;
 
     const activities = await ActivityModel.find(query);
 
@@ -726,13 +732,13 @@ const ExportExcel = async (req, res) => {
       "رقم المسلسل",
       "اسم المشروع",
       "الشركة المنفذة",
-      "القيمة التقديرية",
-      "المخصص المعدل",
+      "القيمة التعاقديه",
+      "القيمة المعدله",
       `المنصرف خلال العام المالي ${nextYear}/${currentYear}`,
       "إجمالي المنصرف",
       "نسبة الصرف",
       "نسبة التنفيذ الحالية",
-      "تاريخ البدء",
+      "تاريخ الإسناد",
       "تاريخ النهو",
       "الملاحظات",
     ];
@@ -774,7 +780,7 @@ const ExportExcel = async (req, res) => {
         activity.progress || "0%",
         activity.assignmentDate ? new Date(activity.assignmentDate) : "",
         activity.completionDate ? new Date(activity.completionDate) : "",
-        "",
+        activity.executivePosition || "",
       ]);
     });
 
