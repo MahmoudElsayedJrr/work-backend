@@ -719,15 +719,13 @@ const ExportExcel = async (req, res) => {
     const worksheet = workbook.addWorksheet("تقرير المشاريع");
     worksheet.views = [{ rightToLeft: true }];
 
-    // ==== حساب السنة المالية الحالية ====
     const now = new Date();
     const currentYear =
       now.getMonth() + 1 >= 7 ? now.getFullYear() : now.getFullYear() - 1;
     const nextYear = currentYear + 1;
-    const fiscalStart = new Date(currentYear, 6, 1); // 1 يوليو
-    const fiscalEnd = new Date(nextYear, 5, 30, 23, 59, 59); // 30 يونيو
+    const fiscalStart = new Date(currentYear, 6, 1);
+    const fiscalEnd = new Date(nextYear, 5, 30, 23, 59, 59);
 
-    // ==== العناوين ====
     const headerRow1 = [
       "رقم المسلسل",
       "اسم المشروع",
@@ -738,7 +736,7 @@ const ExportExcel = async (req, res) => {
       "إجمالي المنصرف",
       "نسبة الصرف",
       "نسبة التنفيذ الحالية",
-      "تاريخ الإسناد",
+      "تاريخ البدء",
       "تاريخ النهو",
       "الملاحظات",
     ];
@@ -757,7 +755,6 @@ const ExportExcel = async (req, res) => {
           0
         ) || 0;
 
-      // المنصرف خلال العام المالي الحالي
       const currentYearDisbursed =
         activity.extract
           ?.filter((ext) => {
@@ -785,7 +782,6 @@ const ExportExcel = async (req, res) => {
       ]);
     });
 
-    // ==== تنسيق الأعمدة ====
     const columnsWidths = [10, 50, 25, 20, 15, 20, 20, 15, 15, 20, 20, 40];
     columnsWidths.forEach((w, i) => {
       worksheet.getColumn(i + 1).width = w;
@@ -796,7 +792,6 @@ const ExportExcel = async (req, res) => {
       };
     });
 
-    // ==== حدود الجدول ====
     worksheet.eachRow((row) => {
       row.eachCell((cell) => {
         cell.border = {
@@ -812,16 +807,16 @@ const ExportExcel = async (req, res) => {
         };
 
         if (row.number === 1) {
-          cell.font = { bold: true, color: { argb: "FFFFFFFF" } }; // أبيض
+          cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
           cell.fill = {
             type: "pattern",
             pattern: "solid",
-            fgColor: { argb: "1F4E78" }, // أزرق غامق
+            fgColor: { argb: "1F4E78" },
           };
         }
       });
     });
-    // ==== إخراج الملف ====
+
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

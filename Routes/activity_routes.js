@@ -35,21 +35,26 @@ router.post(
 
 router.post(
   "/extract/:activityCode",
-  verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
   upload.array("extractpdfs", 5),
   extractController.addExtract
 );
 router.put(
-  "/extract/:extractId",
+  "/extract/:activityCode/:extractId",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.FINANCIAL),
   upload.array("extractpdfs"),
   extractController.updateExtract
 );
-router.delete("/extract/:extractId", extractController.deleteExtract);
 router.delete(
+  "/extract/:activityCode/:extractId",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.FINANCIAL),
+  extractController.deleteExtract
+);
+/* router.delete(
   "/extract/:extractId/pdf/:pdfId",
   extractController.deleteExtractPDF
-);
+); */
 
 router.put(
   "/contract/:activityCode",

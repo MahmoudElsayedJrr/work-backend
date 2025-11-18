@@ -1,7 +1,7 @@
 const ActivityModel = require("../Models/activity_model");
 const httpStatus = require("../utils/http_status");
-const supabase = require("../utils/supabase");
-const fs = require("fs");
+const fs = require("fs").promises;
+const path = require("path");
 const ExcelJS = require("exceljs");
 const savePdfLocally = require("../utils/uploadPDF");
 
@@ -142,7 +142,7 @@ const deleteExtract = async (req, res) => {
     const { activityCode, extractId } = req.params;
 
     const activity = await ActivityModel.findOne({
-      activityCode: activityCode.toUpperCase(),
+      activityCode,
     });
     if (!activity) {
       return res
@@ -161,21 +161,29 @@ const deleteExtract = async (req, res) => {
 
     const deletedExtract = activity.extract[extractIndex];
 
-    // Delete PDF files from storage (optional)
     if (deletedExtract.extractPDFs && deletedExtract.extractPDFs.length > 0) {
+      const UPLOADS_DIR = path.join(__dirname, "../uploads");
+
+      //console.log(`__dirname (Controller Location): ${__dirname}`); /
+      // console.log(`UPLOADS_DIR (Calculated Root): ${UPLOADS_DIR}`);
+
       for (const pdf of deletedExtract.extractPDFs) {
         try {
-          // Extract filename from path
-          const fileName = pdf.path.split("/").pop();
-          const { error } = await supabase.storage
-            .from("extractpdfs")
-            .remove([fileName]);
+          const relativePath = pdf.path.replace(/^\/uploads\//, "");
+          const filePath = path.join(UPLOADS_DIR, relativePath);
 
-          if (error) {
-            console.error("Error deleting file from storage:", error);
-          }
+          // console.log(`File Path from DB: ${pdf.path}`);
+          // console.log(`Attempting to delete: ${filePath}`);
+
+          await fs.access(filePath);
+          await fs.unlink(filePath);
+          console.log(`File deleted successfully: ${filePath}`);
         } catch (fileError) {
-          console.error("Error processing file deletion:", fileError);
+          if (fileError.code === "ENOENT") {
+            console.warn(`File not found, skipping deletion: ${filePath}`);
+          } else {
+            console.error("Error processing file deletion:", fileError);
+          }
         }
       }
     }
@@ -198,74 +206,8 @@ const deleteExtract = async (req, res) => {
   }
 };
 
-const deleteExtractPDF = async (req, res) => {
-  try {
-    const { activityCode, extractId, pdfId } = req.params;
-
-    const activity = await ActivityModel.findOne({
-      activityCode: activityCode.toUpperCase(),
-    });
-    if (!activity) {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity Not Found"));
-    }
-
-    const extractIndex = activity.extract.findIndex(
-      (ex) => ex._id.toString() === extractId
-    );
-    if (extractIndex === -1) {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Extract Not Found"));
-    }
-
-    const extract = activity.extract[extractIndex];
-    const pdfIndex = extract.extractPDFs.findIndex(
-      (pdf) => pdf._id.toString() === pdfId
-    );
-    if (pdfIndex === -1) {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("PDF Not Found"));
-    }
-
-    const deletedPDF = extract.extractPDFs[pdfIndex];
-
-    // Delete file from storage
-    try {
-      const fileName = deletedPDF.path.split("/").pop();
-      const { error } = await supabase.storage
-        .from("extractpdfs")
-        .remove([fileName]);
-
-      if (error) {
-        console.error("Error deleting file from storage:", error);
-      }
-    } catch (fileError) {
-      console.error("Error processing file deletion:", fileError);
-    }
-
-    // Remove PDF from array
-    extract.extractPDFs.splice(pdfIndex, 1);
-
-    await activity.save();
-
-    res.status(200).json(
-      httpStatus.httpSuccessStatus({
-        message: "PDF deleted successfully",
-        deletedPDF: deletedPDF,
-      })
-    );
-  } catch (error) {
-    console.error("Error deleting PDF:", error);
-    res.status(500).json(httpStatus.httpErrorStatus(error.message));
-  }
-};
-
 module.exports = {
   addExtract,
   updateExtract,
   deleteExtract,
-  deleteExtractPDF,
 };

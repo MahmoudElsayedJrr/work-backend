@@ -129,7 +129,7 @@ const activitySchema = new mongoose.Schema(
       default: null,
     },
     receptionDate: {
-      // تاريخ الاستلام
+      // تاريخ البدء
       type: Date,
       default: null,
     },
