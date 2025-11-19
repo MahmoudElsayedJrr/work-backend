@@ -521,7 +521,7 @@ const GetAllActivites = async (req, res) => {
 
     const activities = await ActivityModel.find(filter, { __v: 0, _id: 0 });
     const activityCount = await ActivityModel.countDocuments(filter);
-    activities.forEach((a) => {
+    /*  activities.forEach((a) => {
       const percentage =
         (a.disbursedAmount /
           (a.contractualValue === 0 ? 1 : a.contractualValue)) *
@@ -529,7 +529,7 @@ const GetAllActivites = async (req, res) => {
 
       console.log(`📌 ${a.activityName} => ${percentage.toFixed(2)}%`);
     });
-
+ */
     const responseData = {
       total: activityCount,
       activities: activities,
@@ -645,17 +645,44 @@ const GetActivitiesStatistics = async (req, res) => {
 
 const getTotalDisbursed = async (req, res) => {
   try {
-    const filter = buildActivityFilter(req.query);
+    const targetFiscalYear =
+      req.query.extractFiscalYear || req.query.fiscalYear;
 
-    const activities = await ActivityModel.find(filter, "disbursedAmount");
+    let queryForFilter = { ...req.query };
 
-    const totalDisbursed = activities.reduce(
-      (sum, activity) => sum + (activity.disbursedAmount || 0),
-      0
-    );
+    if (queryForFilter.extractFiscalYear)
+      delete queryForFilter.extractFiscalYear;
+    if (queryForFilter.fiscalYear) delete queryForFilter.fiscalYear;
 
+    const filter = buildActivityFilter(queryForFilter);
+
+    let totalDisbursed = 0;
+
+    if (targetFiscalYear) {
+      const activities = await ActivityModel.find(
+        filter,
+        "extract activityCode"
+      );
+
+      totalDisbursed = activities.reduce((total, activity) => {
+        const yearTotal = activity.extract
+          .filter((ex) => ex.extractFiscalYear === targetFiscalYear)
+          .reduce((sum, ex) => sum + (ex.extractValue || 0), 0);
+
+        return total + yearTotal;
+      }, 0);
+    } else {
+      const activities = await ActivityModel.find(filter, "disbursedAmount");
+      totalDisbursed = activities.reduce(
+        (sum, activity) => sum + (activity.disbursedAmount || 0),
+        0
+      );
+    }
+
+    console.log("Final Total:", totalDisbursed);
     res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
   } catch (error) {
+    console.error("Error getting total disbursed:", error);
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
@@ -846,7 +873,7 @@ const ExportExcel = async (req, res) => {
           ? ((totalDisbursed / contractualValue) * 100).toFixed(2) + "%"
           : "0%",
         activity.progress || "0%",
-        activity.assignmentDate ? new Date(activity.assignmentDate) : "",
+        activity.receptionDate ? new Date(activity.receptionDate) : "",
         activity.completionDate ? new Date(activity.completionDate) : "",
         activity.executivePosition || "",
       ]);

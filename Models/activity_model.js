@@ -56,7 +56,7 @@ const activitySchema = new mongoose.Schema(
           "خدمات",
           "تنمية متكاملة",
           "حضانات",
-          "مجازر",           
+          "مجازر",
           "تأهيل مباني حكومية",
           "تجمعات تنموية",
           "اخر",
@@ -326,6 +326,11 @@ const activitySchema = new mongoose.Schema(
           type: Date,
           required: [true, "تاريخ المستخلص مطلوب."],
           default: Date.now,
+        },
+
+        extractFiscalYear: {
+          type: String,
+          default: null,
         },
 
         extractPDFs: [

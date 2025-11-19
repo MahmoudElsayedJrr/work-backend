@@ -4,6 +4,7 @@ const fs = require("fs").promises;
 const path = require("path");
 const ExcelJS = require("exceljs");
 const savePdfLocally = require("../utils/uploadPDF");
+const { getFiscalYear } = require("../utils/fiscalYear");
 
 const addExtract = async (req, res) => {
   try {
@@ -43,9 +44,12 @@ const addExtract = async (req, res) => {
       }
     }
 
+    const currentFiscalYear = getFiscalYear(extractDate);
+
     const extractData = {
       extractValue: parseFloat(extractValue),
       extractDate: extractDate ? new Date(extractDate) : new Date(),
+      extractFiscalYear: currentFiscalYear,
       extractPDFs: extractPDFs,
     };
 
