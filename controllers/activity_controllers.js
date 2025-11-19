@@ -425,40 +425,92 @@ const UpdateActivity = async (req, res) => {
 };
 
 const buildActivityFilter = (query) => {
-  const filter = {};
+  const filter = { $and: [] };
 
   if (query.name) {
-    filter.activityName = { $regex: query.name, $options: "i" };
-  }
-  if (query.governorate && query.governorate !== "الكل") {
-    filter.governorate = query.governorate;
-  }
-  if (query.status && query.status !== "الكل") {
-    filter.status = query.status;
-  }
-  if (query.fiscalYear && query.fiscalYear !== "الكل") {
-    filter.fiscalYear = query.fiscalYear;
-  }
-  if (query.activityCode) {
-    filter.activityCode = query.activityCode.toUpperCase();
-  }
-  if (query.fundingType && query.fundingType !== "الكل") {
-    filter.fundingType = query.fundingType;
-  }
-  if (query.projectCategory && query.projectCategory !== "الكل") {
-    filter.projectCategory = query.projectCategory;
-  }
-  if (query.progressMin || query.progressMax) {
-    filter.progress = {};
-    if (query.progressMin) {
-      filter.progress.$gte = Number(query.progressMin);
-    }
-    if (query.progressMax) {
-      filter.progress.$lte = Number(query.progressMax);
-    }
+    filter.$and.push({
+      activityName: { $regex: query.name, $options: "i" },
+    });
   }
 
-  return filter;
+  if (query.governorate && query.governorate !== "الكل") {
+    filter.$and.push({ governorate: query.governorate });
+  }
+
+  if (query.status && query.status !== "الكل") {
+    filter.$and.push({ status: query.status });
+  }
+
+  if (query.fiscalYear && query.fiscalYear !== "الكل") {
+    filter.$and.push({ fiscalYear: query.fiscalYear });
+  }
+
+  if (query.activityCode) {
+    filter.$and.push({
+      activityCode: query.activityCode.toUpperCase(),
+    });
+  }
+
+  if (query.fundingType && query.fundingType !== "الكل") {
+    filter.$and.push({ fundingType: query.fundingType });
+  }
+
+  if (query.projectCategory && query.projectCategory !== "الكل") {
+    filter.$and.push({ projectCategory: query.projectCategory });
+  }
+
+  // نسبة الصرف
+  if (query.disbursedPercentageMin || query.disbursedPercentageMax) {
+    const percentageExpr = {
+      $multiply: [
+        {
+          $divide: [
+            "$disbursedAmount",
+            {
+              $cond: [
+                { $eq: ["$contractualValue", 0] },
+                1,
+                "$contractualValue",
+              ],
+            },
+          ],
+        },
+        100,
+      ],
+    };
+
+    const exprConditions = [];
+
+    if (query.disbursedPercentageMin) {
+      exprConditions.push({
+        $gte: [percentageExpr, Number(query.disbursedPercentageMin)],
+      });
+    }
+
+    if (query.disbursedPercentageMax) {
+      exprConditions.push({
+        $lte: [percentageExpr, Number(query.disbursedPercentageMax)],
+      });
+    }
+
+    filter.$and.push({ $expr: { $and: exprConditions } });
+  }
+
+  // progress
+  if (query.progressMin || query.progressMax) {
+    const progressCondition = {};
+
+    if (query.progressMin) {
+      progressCondition.$gte = Number(query.progressMin);
+    }
+    if (query.progressMax) {
+      progressCondition.$lte = Number(query.progressMax);
+    }
+
+    filter.$and.push({ progress: progressCondition });
+  }
+
+  return filter.$and.length > 0 ? filter : {};
 };
 
 const GetAllActivites = async (req, res) => {
@@ -469,6 +521,14 @@ const GetAllActivites = async (req, res) => {
 
     const activities = await ActivityModel.find(filter, { __v: 0, _id: 0 });
     const activityCount = await ActivityModel.countDocuments(filter);
+    activities.forEach((a) => {
+      const percentage =
+        (a.disbursedAmount /
+          (a.contractualValue === 0 ? 1 : a.contractualValue)) *
+        100;
+
+      console.log(`📌 ${a.activityName} => ${percentage.toFixed(2)}%`);
+    });
 
     const responseData = {
       total: activityCount,
@@ -517,6 +577,16 @@ const GetActivitiesStatistics = async (req, res) => {
         matchFilter.progress.$lte = Number(query.progressMax);
       }
     }
+
+    /*     if (query.disbursedAmountMin || query.disbursedAmountMax) {
+      matchFilter.disbursedAmount = {};
+      if (query.progressMin) {
+        matchFilter.disbursedAmount.$gte = Number(query.disbursedAmountMin);
+      }
+      if (query.disbursedAmountMax) {
+        matchFilter.disbursedAmount.$lte = Number(query.disbursedAmountMax);
+      }
+    } */
 
     const statistics = await ActivityModel.aggregate([
       { $match: matchFilter },
@@ -746,7 +816,7 @@ const ExportExcel = async (req, res) => {
     // ==== إضافة البيانات ====
     let serial = 1;
     activities.forEach((activity) => {
-      const estimatedValue = activity.estimatedValue || 0;
+      const contractualValue = activity.contractualValue || 0;
 
       // إجمالي المنصرف
       const totalDisbursed =
@@ -772,8 +842,8 @@ const ExportExcel = async (req, res) => {
 
         currentYearDisbursed,
         totalDisbursed,
-        estimatedValue > 0
-          ? ((totalDisbursed / estimatedValue) * 100).toFixed(2) + "%"
+        contractualValue > 0
+          ? ((totalDisbursed / contractualValue) * 100).toFixed(2) + "%"
           : "0%",
         activity.progress || "0%",
         activity.assignmentDate ? new Date(activity.assignmentDate) : "",
