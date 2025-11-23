@@ -47,6 +47,7 @@ const activitySchema = new mongoose.Schema(
       type: String,
       enum: {
         values: [
+          "",
           "محافظة الإسماعيلية",
           "محافظة بورسعيد",
           "محافظة السويس",
@@ -68,8 +69,6 @@ const activitySchema = new mongoose.Schema(
         ],
         message: "القيمة المدخلة ليست ضمن مصادر التمويل المعتمدة.",
       },
-
-      required: false,
     },
     projectCategory: {
       type: String,
@@ -88,11 +87,11 @@ const activitySchema = new mongoose.Schema(
           "مجازر",
           "تأهيل مباني حكومية",
           "تجمعات تنموية",
-          "اخر",
+          "عمارات",
         ],
         message: "فئة المشروع المدخلة غير صالحة.",
       },
-      default: "اخر",
+      default: "",
     },
 
     status: {
