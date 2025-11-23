@@ -162,6 +162,9 @@ const updatableFieldsByRole = {
     "activityName",
     "executingCompany",
     "fundingType",
+    "fundingSource",
+    "supervisorEngineer",
+    "supervisorPhone",
     "projectCategory",
     "consultant",
     "governorate",
@@ -212,6 +215,9 @@ const updatableFieldsByRole = {
     "governorate",
     "projectCategory",
     "fundingType",
+    "fundingSource",
+    "supervisorEngineer",
+    "supervisorPhone",
     "consultant",
     "activityDescription",
     "mediaFiles",
@@ -454,6 +460,9 @@ const buildActivityFilter = (query) => {
   if (query.fundingType && query.fundingType !== "الكل") {
     filter.$and.push({ fundingType: query.fundingType });
   }
+  if (query.fundingSource && query.fundingSource !== "الكل") {
+    filter.$and.push({ fundingSource: query.fundingSource });
+  }
 
   if (query.projectCategory && query.projectCategory !== "الكل") {
     filter.$and.push({ projectCategory: query.projectCategory });
@@ -564,6 +573,9 @@ const GetActivitiesStatistics = async (req, res) => {
     }
     if (query.fundingType && query.fundingType !== "الكل") {
       matchFilter.fundingType = query.fundingType;
+    }
+    if (query.fundingSource && query.fundingSource !== "الكل") {
+      matchFilter.fundingSource = query.fundingSource;
     }
     if (query.projectCategory && query.projectCategory !== "الكل") {
       matchFilter.projectCategory = query.projectCategory;
