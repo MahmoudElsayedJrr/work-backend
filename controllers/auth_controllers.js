@@ -4,7 +4,7 @@ const generateJWT = require("../utils/generateJWT");
 const httpStatus = require("../utils/http_status");
 
 const register = async (req, res) => {
-  const { name, role, password, email } = req.body;
+  const { name, role, password, email, region } = req.body;
   const oldEmployee = await employeeModel.findOne({ name });
   if (oldEmployee) {
     return res
@@ -24,11 +24,13 @@ const register = async (req, res) => {
     email,
     role,
     password: hashedPassword,
+    region,
   });
   const token = await generateJWT({
     name: newEmployee.name,
     role: newEmployee.role,
     email: newEmployee.email,
+    region: newEmployee.region,
   });
   newEmployee.token = token;
   await newEmployee.save();
@@ -54,6 +56,7 @@ const login = async (req, res) => {
   const token = await generateJWT({
     name: employee.name,
     role: employee.role,
+    region: employee.region,
   });
   employee.token = token;
   await employee.save();

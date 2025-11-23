@@ -36,6 +36,23 @@ const employeeSchema = new mongoose.Schema(
       ],
       default: "employee",
     },
+
+    region: {
+      type: String,
+      enum: {
+        values: [
+          "شمال سيناء",
+          "جنوب سيناء",
+          "بورسعيد",
+          "الإسماعيلية",
+          "السويس",
+          "الشرقية",
+          "دمياط",
+          "super",
+        ],
+        message: "القيمة المدخلة للمحافظة غير صالحة.",
+      },
+    },
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -50,21 +67,6 @@ const employeeSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-/* employeeSchema
-  .virtual("confirmPassword")
-  .get(function () {
-    return this._confirmPassword;
-  })
-  .set(function (value) {
-    this._confirmPassword = value;
-  });
-
-employeeSchema.pre("validate", function (next) {
-  if (this.isNew && this.password !== this._confirmPassword) {
-    this.invalidate("confirmPassword", "Passwords do not match");
-  }
-  next();
-}); */
 
 const Employee = mongoose.model("Employee", employeeSchema);
 
