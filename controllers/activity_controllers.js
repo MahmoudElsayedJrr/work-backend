@@ -460,8 +460,16 @@ const buildActivityFilter = (query, regionFilter = {}) => {
     filter.$and.push({ region: query.region });
   }
 
+  if (query.governorate && query.governorate !== "الكل") {
+    filter.$and.push({ governorate: query.governorate });
+  }
+
   if (query.status && query.status !== "الكل") {
     filter.$and.push({ status: query.status });
+  }
+
+  if (query.fundingSource && query.fundingSource !== "الكل") {
+    filter.$and.push({ fundingSource: query.fundingSource });
   }
 
   if (query.fiscalYear && query.fiscalYear !== "الكل") {
