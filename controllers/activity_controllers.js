@@ -614,13 +614,14 @@ const GetAllActivites = async (req, res) => {
 const GetActivitiesStatistics = async (req, res) => {
   try {
     const query = req.query;
-    const matchFilter = { ...req.regionFilter };
+    const matchFilter = {};
 
+    // Apply filters
     if (query.name) {
       matchFilter.activityName = { $regex: query.name, $options: "i" };
     }
-    if (query.region && query.region !== "الكل") {
-      matchFilter.region = query.region;
+    if (query.governorate && query.governorate !== "الكل") {
+      matchFilter.governorate = query.governorate;
     }
     if (query.status && query.status !== "الكل") {
       matchFilter.status = query.status;
@@ -651,8 +652,8 @@ const GetActivitiesStatistics = async (req, res) => {
       { $match: matchFilter },
       {
         $group: {
-          _id: "$region",
-          region: { $first: "$region" },
+          _id: "$governorate",
+          governorate: { $first: "$governorate" },
           totalActivities: { $sum: 1 },
           completed: {
             $sum: { $cond: [{ $eq: ["$status", "مكتمل"] }, 1, 0] },
@@ -682,7 +683,7 @@ const GetActivitiesStatistics = async (req, res) => {
       {
         $project: {
           _id: 0,
-          region: 1,
+          governorate: 1,
           totalActivities: 1,
           begin: 1,
           completed: 1,
@@ -693,7 +694,7 @@ const GetActivitiesStatistics = async (req, res) => {
           finalDelivery: 1,
         },
       },
-      { $sort: { region: 1 } },
+      { $sort: { governorate: 1 } },
     ]);
 
     res.status(200).json(httpStatus.httpSuccessStatus(statistics));
