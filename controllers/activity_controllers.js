@@ -8,11 +8,35 @@ const savePdfLocally = require("../utils/uploadPDF");
 const path = require("path");
 
 const AddNewActivity = async (req, res) => {
-  console.log("Received request body:", req.body);
   try {
+    if (req.userRegion) {
+      if (!req.body.governorate) {
+        return res
+          .status(400)
+          .json(httpStatus.httpFaliureStatus("يجب تحديد المحافظة"));
+      }
+
+      if (req.body.governorate.trim() !== req.userRegion.trim()) {
+        return res
+          .status(403)
+          .json(
+            httpStatus.httpFaliureStatus(
+              `غير مسموح لك بإضافة مشاريع في محافظة ${req.body.governorate}. يمكنك فقط إضافة مشاريع في محافظة ${req.userRegion}`
+            )
+          );
+      }
+    } else {
+      if (!req.body.governorate) {
+        return res
+          .status(400)
+          .json(httpStatus.httpFaliureStatus("يجب تحديد المحافظة"));
+      }
+    }
+
     const existingActivity = await ActivityModel.findOne({
       activityCode: req.body.activityCode.toUpperCase(),
     });
+
     if (existingActivity) {
       return res
         .status(400)
@@ -72,51 +96,52 @@ const AddNewActivity = async (req, res) => {
   }
 };
 
-/* const GetAllActivites = async (req, res) => {
-  try {
-    const activities = await ActivityModel.find({}, { __v: 0, _id: 0 });
-    const activityCount = await ActivityModel.countDocuments({});
-    const responseData = {
-      total: activityCount,
-      activities: activities,
-    };
-    res.status(200).json(httpStatus.httpSuccessStatus(responseData));
-  } catch (error) {
-    res.status(500).json(httpStatus.httpErrorStatus(error));
-  }
-}; ;*/
-
+// ==================== جلب مشروع واحد ====================
 const GetActivityById = async (req, res) => {
   try {
     const { activityCode } = req.params;
-    const activity = await ActivityModel.findOne({
-      activityCode: activityCode.toUpperCase(),
-    });
 
-    if (!activity)
+    const query = {
+      activityCode: activityCode.toUpperCase(),
+      ...req.regionFilter,
+    };
+
+    const activity = await ActivityModel.findOne(query);
+
+    if (!activity) {
       return res
         .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity not found"));
+        .json(
+          httpStatus.httpFaliureStatus("Activity not found or not accessible")
+        );
+    }
 
-    // res.json(employee);
     res.status(200).json(httpStatus.httpSuccessStatus(activity));
   } catch (error) {
     res.status(400).json(httpStatus.httpErrorStatus(error.message));
   }
 };
 
+// ==================== حذف مشروع ====================
 const DeleteActivity = async (req, res) => {
   try {
     const { activityCode } = req.params;
 
-    const activity = await ActivityModel.findOne({
+    const query = {
       activityCode: activityCode.toUpperCase(),
-    });
+      ...req.regionFilter,
+    };
+
+    const activity = await ActivityModel.findOne(query);
 
     if (!activity) {
       return res
         .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity not found"));
+        .json(
+          httpStatus.httpFaliureStatus(
+            "Activity not found or you don't have permission to delete it"
+          )
+        );
     }
 
     const deleteFiles = (files) => {
@@ -129,8 +154,6 @@ const DeleteActivity = async (req, res) => {
         );
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-        } else {
-          console.warn("File not found on disk:", filePath);
         }
       });
     };
@@ -140,9 +163,7 @@ const DeleteActivity = async (req, res) => {
     deleteFiles(activity.contractualDocuments);
     deleteFiles(activity.extractpdfs);
 
-    await ActivityModel.findOneAndDelete({
-      activityCode: activityCode.toUpperCase(),
-    });
+    await ActivityModel.findOneAndDelete(query);
 
     res
       .status(200)
@@ -157,17 +178,18 @@ const DeleteActivity = async (req, res) => {
   }
 };
 
+// ==================== تعديل مشروع ====================
 const updatableFieldsByRole = {
   admin: [
     "activityName",
     "executingCompany",
     "fundingType",
     "fundingSource",
-    "supervisorEngineer",
-    "supervisorPhone",
     "projectCategory",
     "consultant",
     "governorate",
+    "supervisorEngineer",
+    "supervisorPhone",
     "activityDescription",
     "estimatedValue",
     "contractualValue",
@@ -207,19 +229,17 @@ const updatableFieldsByRole = {
     "extractPDFs",
     "fiscalYear",
   ],
-
   manager: [
-    // التخطيط والمتابعة فقط
     "activityName",
     "executingCompany",
     "governorate",
     "projectCategory",
     "fundingType",
     "fundingSource",
-    "supervisorEngineer",
-    "supervisorPhone",
     "consultant",
     "activityDescription",
+    "supervisorEngineer",
+    "supervisorPhone",
     "mediaFiles",
     "estimatedValue",
     "contractualValue",
@@ -227,7 +247,6 @@ const updatableFieldsByRole = {
     "receptionDate",
     "fiscalYear",
   ],
-
   executive: [
     "status",
     "progress",
@@ -235,9 +254,7 @@ const updatableFieldsByRole = {
     "projectLocationLink",
     "mediaFiles",
   ],
-
   financial: ["disbursedAmount", "extractDate", "extractValue", "extractPDFs"],
-
   projectManager: [
     "roaddetails",
     "petroleumCompany",
@@ -257,7 +274,6 @@ const updatableFieldsByRole = {
     "contractDate",
     "contractPrice",
   ],
-
   contractual: [
     "publishDate",
     "technicalDecisionDate",
@@ -266,42 +282,43 @@ const updatableFieldsByRole = {
     "siteHandoverDate",
     "contractualDocuments",
   ],
-
   employee: [],
 };
-
-/* const UpdateActivity = async (req, res) => {
-  try {
-    const { activityCode } = req.params;
-    const UpdateActivity = await ActivityModel.findOneAndUpdate(
-      { activityCode: activityCode.toUpperCase() },
-      { $set: req.body },
-      { new: true }
-    );
-    if (!UpdateActivity)
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity not found"));
-
-    res.status(200).json(httpStatus.httpSuccessStatus(UpdateActivity));
-  } catch (error) {
-    res.status(400).json(httpStatus.httpErrorStatus(error.message));
-  }
-}; */
 
 const UpdateActivity = async (req, res) => {
   try {
     const { activityCode } = req.params;
     const employeeRole = req.currentEmployee.role;
 
-    const activityToUpdate = await ActivityModel.findOne({
+    // ✅ إضافة فلتر المحافظة
+    const query = {
       activityCode: activityCode.toUpperCase(),
-    });
+      ...req.regionFilter,
+    };
+
+    const activityToUpdate = await ActivityModel.findOne(query);
 
     if (!activityToUpdate) {
       return res
         .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity not found"));
+        .json(
+          httpStatus.httpFaliureStatus(
+            "Activity not found or you don't have permission to update it"
+          )
+        );
+    }
+
+    // ✅ منع تغيير المحافظة إلا للـ super admin
+    if (req.body.region && req.userRegion) {
+      if (req.body.region !== req.userRegion) {
+        return res
+          .status(403)
+          .json(
+            httpStatus.httpFaliureStatus(
+              "لا يمكنك تغيير المحافظة إلى محافظة أخرى"
+            )
+          );
+      }
     }
 
     const allowedFields = updatableFieldsByRole[employeeRole];
@@ -313,8 +330,6 @@ const UpdateActivity = async (req, res) => {
         key !== "activitypdfs"
       ) {
         activityToUpdate[key] = req.body[key];
-      } else if (key !== "contractualDocuments" && key !== "activitypdfs") {
-        console.log(`Field ${key} not allowed for role ${employeeRole}`);
       }
     });
 
@@ -339,9 +354,6 @@ const UpdateActivity = async (req, res) => {
     }
 
     if (req.body.disbursedAmount !== undefined) {
-      console.log(`المنصرف القديم = ${activityToUpdate.disbursedAmount}`);
-      console.log(`المنصرف الجديد المدخل = ${req.body.disbursedAmount}`);
-
       const totalInvoices = Array.isArray(activityToUpdate.extract)
         ? activityToUpdate.extract.reduce((sum, inv) => {
             const val = parseFloat(inv.extractValue) || 0;
@@ -383,7 +395,7 @@ const UpdateActivity = async (req, res) => {
         activityToUpdate.images = [];
       }
       for (const file of req.files.images) {
-        const { publicUrl, originalName } = await saveImageLocally(file);
+        const { publicUrl } = await saveImageLocally(file);
         activityToUpdate.images.push(publicUrl);
       }
     }
@@ -404,7 +416,6 @@ const UpdateActivity = async (req, res) => {
       }
     }
 
-    console.log("activitypdfs files:", req.files?.activitypdfs);
     if (req.files?.activitypdfs?.length > 0) {
       if (!Array.isArray(activityToUpdate.activitypdfs)) {
         activityToUpdate.activitypdfs = [];
@@ -420,7 +431,7 @@ const UpdateActivity = async (req, res) => {
         });
       }
     }
-    console.log("PDFs Saved:", activityToUpdate.activitypdfs);
+
     const updatedActivity = await activityToUpdate.save();
 
     res.status(200).json(httpStatus.httpSuccessStatus(updatedActivity));
@@ -430,8 +441,14 @@ const UpdateActivity = async (req, res) => {
   }
 };
 
-const buildActivityFilter = (query) => {
+// ==================== بناء الفلتر ====================
+const buildActivityFilter = (query, regionFilter = {}) => {
   const filter = { $and: [] };
+
+  // ✅ أضف فلتر المحافظة لو موجود
+  if (regionFilter && Object.keys(regionFilter).length > 0) {
+    filter.$and.push(regionFilter);
+  }
 
   if (query.name) {
     filter.$and.push({
@@ -439,8 +456,8 @@ const buildActivityFilter = (query) => {
     });
   }
 
-  if (query.governorate && query.governorate !== "الكل") {
-    filter.$and.push({ governorate: query.governorate });
+  if (query.region && query.region !== "الكل") {
+    filter.$and.push({ region: query.region });
   }
 
   if (query.status && query.status !== "الكل") {
@@ -460,15 +477,11 @@ const buildActivityFilter = (query) => {
   if (query.fundingType && query.fundingType !== "الكل") {
     filter.$and.push({ fundingType: query.fundingType });
   }
-  if (query.fundingSource && query.fundingSource !== "الكل") {
-    filter.$and.push({ fundingSource: query.fundingSource });
-  }
 
   if (query.projectCategory && query.projectCategory !== "الكل") {
     filter.$and.push({ projectCategory: query.projectCategory });
   }
 
-  // نسبة الصرف
   if (query.disbursedPercentageMin || query.disbursedPercentageMax) {
     const percentageExpr = {
       $multiply: [
@@ -505,7 +518,6 @@ const buildActivityFilter = (query) => {
     filter.$and.push({ $expr: { $and: exprConditions } });
   }
 
-  // progress
   if (query.progressMin || query.progressMax) {
     const progressCondition = {};
 
@@ -519,26 +531,73 @@ const buildActivityFilter = (query) => {
     filter.$and.push({ progress: progressCondition });
   }
 
-  return filter.$and.length > 0 ? filter : {};
+  // ✅ لو فيه شروط، ارجع $and، لو مفيش ارجع object فاضي أو regionFilter
+  if (filter.$and.length > 1) {
+    return filter;
+  } else if (filter.$and.length === 1) {
+    return filter.$and[0]; // ارجع الشرط الوحيد بدون $and
+  } else {
+    return {}; // مفيش أي شروط
+  }
 };
 
+// ==================== جلب كل المشاريع ====================
 const GetAllActivites = async (req, res) => {
   try {
-    const filter = buildActivityFilter(req.query);
+    console.log("=== GET ALL ACTIVITIES DEBUG ===");
+    console.log("req.regionFilter:", JSON.stringify(req.regionFilter));
+    console.log("req.userRegion:", req.userRegion);
+    console.log(
+      "req.currentEmployee:",
+      req.currentEmployee
+        ? {
+            name: req.currentEmployee.name,
+            role: req.currentEmployee.role,
+            region: req.currentEmployee.region,
+          }
+        : "undefined"
+    );
+    console.log("req.query:", JSON.stringify(req.query));
 
-    console.log("Filtering with:", filter);
+    const sampleActivity = await ActivityModel.findOne({});
+    console.log(
+      "📌 Sample Activity Fields:",
+      sampleActivity
+        ? {
+            activityCode: sampleActivity.activityCode,
+            activityName: sampleActivity.activityName,
+            region: sampleActivity.region,
+            governorate: sampleActivity.governorate,
+            allFields: Object.keys(sampleActivity.toObject()),
+          }
+        : "No activities found"
+    );
+
+    const totalActivities = await ActivityModel.countDocuments({});
+    console.log("📊 Total Activities in DB (no filter):", totalActivities);
+
+    const testRegion = await ActivityModel.countDocuments({
+      region: "الإسماعيلية",
+    });
+    const testGovernorate = await ActivityModel.countDocuments({
+      governorate: "الإسماعيلية",
+    });
+    console.log("🔍 Activities with region='الإسماعيلية':", testRegion);
+    console.log(
+      "🔍 Activities with governorate='الإسماعيلية':",
+      testGovernorate
+    );
+
+    const filter = buildActivityFilter(req.query, req.regionFilter);
+
+    console.log("Final Filter:", JSON.stringify(filter, null, 2));
 
     const activities = await ActivityModel.find(filter, { __v: 0, _id: 0 });
     const activityCount = await ActivityModel.countDocuments(filter);
-    /*  activities.forEach((a) => {
-      const percentage =
-        (a.disbursedAmount /
-          (a.contractualValue === 0 ? 1 : a.contractualValue)) *
-        100;
 
-      console.log(`📌 ${a.activityName} => ${percentage.toFixed(2)}%`);
-    });
- */
+    console.log("Activities Found:", activityCount);
+    console.log("================================");
+
     const responseData = {
       total: activityCount,
       activities: activities,
@@ -546,21 +605,22 @@ const GetAllActivites = async (req, res) => {
 
     res.status(200).json(httpStatus.httpSuccessStatus(responseData));
   } catch (error) {
+    console.error("Error in GetAllActivites:", error);
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
 
+// ==================== الإحصائيات ====================
 const GetActivitiesStatistics = async (req, res) => {
   try {
     const query = req.query;
-    const matchFilter = {};
+    const matchFilter = { ...req.regionFilter };
 
-    // Apply filters
     if (query.name) {
       matchFilter.activityName = { $regex: query.name, $options: "i" };
     }
-    if (query.governorate && query.governorate !== "الكل") {
-      matchFilter.governorate = query.governorate;
+    if (query.region && query.region !== "الكل") {
+      matchFilter.region = query.region;
     }
     if (query.status && query.status !== "الكل") {
       matchFilter.status = query.status;
@@ -573,9 +633,6 @@ const GetActivitiesStatistics = async (req, res) => {
     }
     if (query.fundingType && query.fundingType !== "الكل") {
       matchFilter.fundingType = query.fundingType;
-    }
-    if (query.fundingSource && query.fundingSource !== "الكل") {
-      matchFilter.fundingSource = query.fundingSource;
     }
     if (query.projectCategory && query.projectCategory !== "الكل") {
       matchFilter.projectCategory = query.projectCategory;
@@ -590,22 +647,12 @@ const GetActivitiesStatistics = async (req, res) => {
       }
     }
 
-    /*     if (query.disbursedAmountMin || query.disbursedAmountMax) {
-      matchFilter.disbursedAmount = {};
-      if (query.progressMin) {
-        matchFilter.disbursedAmount.$gte = Number(query.disbursedAmountMin);
-      }
-      if (query.disbursedAmountMax) {
-        matchFilter.disbursedAmount.$lte = Number(query.disbursedAmountMax);
-      }
-    } */
-
     const statistics = await ActivityModel.aggregate([
       { $match: matchFilter },
       {
         $group: {
-          _id: "$governorate",
-          governorate: { $first: "$governorate" },
+          _id: "$region",
+          region: { $first: "$region" },
           totalActivities: { $sum: 1 },
           completed: {
             $sum: { $cond: [{ $eq: ["$status", "مكتمل"] }, 1, 0] },
@@ -635,7 +682,7 @@ const GetActivitiesStatistics = async (req, res) => {
       {
         $project: {
           _id: 0,
-          governorate: 1,
+          region: 1,
           totalActivities: 1,
           begin: 1,
           completed: 1,
@@ -646,7 +693,7 @@ const GetActivitiesStatistics = async (req, res) => {
           finalDelivery: 1,
         },
       },
-      { $sort: { governorate: 1 } },
+      { $sort: { region: 1 } },
     ]);
 
     res.status(200).json(httpStatus.httpSuccessStatus(statistics));
@@ -655,6 +702,7 @@ const GetActivitiesStatistics = async (req, res) => {
   }
 };
 
+// ==================== إجمالي المنصرف ====================
 const getTotalDisbursed = async (req, res) => {
   try {
     const targetFiscalYear =
@@ -666,7 +714,7 @@ const getTotalDisbursed = async (req, res) => {
       delete queryForFilter.extractFiscalYear;
     if (queryForFilter.fiscalYear) delete queryForFilter.fiscalYear;
 
-    const filter = buildActivityFilter(queryForFilter);
+    const filter = buildActivityFilter(queryForFilter, req.regionFilter);
 
     let totalDisbursed = 0;
 
@@ -691,17 +739,16 @@ const getTotalDisbursed = async (req, res) => {
       );
     }
 
-    console.log("Final Total:", totalDisbursed);
     res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
   } catch (error) {
-    console.error("Error getting total disbursed:", error);
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
 
+// ==================== إجمالي المخصص المالي ====================
 const getTotalContractualValue = async (req, res) => {
   try {
-    const filter = buildActivityFilter(req.query);
+    const filter = buildActivityFilter(req.query, req.regionFilter);
 
     const activities = await ActivityModel.find(filter, "contractualValue");
 
@@ -716,6 +763,7 @@ const getTotalContractualValue = async (req, res) => {
   }
 };
 
+// ==================== حذف PDF ====================
 const DeletePdfFromActivity = async (req, res) => {
   try {
     const { activityCode, pdfPath } = req.body;
@@ -728,20 +776,26 @@ const DeletePdfFromActivity = async (req, res) => {
 
     const fieldName = fieldMap[bucketName];
     if (!fieldName) {
-      console.log("Bucket name received:", bucketName);
       return res
         .status(400)
         .json(httpStatus.httpFaliureStatus("Invalid bucket name"));
     }
 
-    const activity = await ActivityModel.findOne({
+    const query = {
       activityCode: activityCode.toUpperCase(),
-    });
+      ...req.regionFilter,
+    };
+
+    const activity = await ActivityModel.findOne(query);
 
     if (!activity) {
       return res
         .status(404)
-        .json(httpStatus.httpFaliureStatus("Project not found"));
+        .json(
+          httpStatus.httpFaliureStatus(
+            "Project not found or you don't have permission"
+          )
+        );
     }
 
     const fileName = decodeURIComponent(pdfPath.split("/").pop());
@@ -749,11 +803,6 @@ const DeletePdfFromActivity = async (req, res) => {
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-    } else {
-      console.log("File not found at path:", filePath);
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("File not found in uploads"));
     }
 
     activity[fieldName] = activity[fieldName].filter(
@@ -769,18 +818,26 @@ const DeletePdfFromActivity = async (req, res) => {
   }
 };
 
+// ==================== حذف صورة ====================
 const DeleteImageFromActivity = async (req, res) => {
   try {
     const { activityCode, imagePath } = req.body;
 
-    const activity = await ActivityModel.findOne({
+    const query = {
       activityCode: activityCode.toUpperCase(),
-    });
+      ...req.regionFilter,
+    };
+
+    const activity = await ActivityModel.findOne(query);
 
     if (!activity) {
       return res
         .status(404)
-        .json(httpStatus.httpFaliureStatus("Project not found"));
+        .json(
+          httpStatus.httpFaliureStatus(
+            "Project not found or you don't have permission"
+          )
+        );
     }
 
     const fileName = decodeURIComponent(imagePath.split("/").pop());
@@ -793,10 +850,6 @@ const DeleteImageFromActivity = async (req, res) => {
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-    } else {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("File not found in uploads"));
     }
 
     activity.images = activity.images.filter((img) => img !== imagePath);
@@ -845,9 +898,10 @@ const ExportExcel = async (req, res) => {
       "إجمالي المنصرف",
       "نسبة الصرف",
       "نسبة التنفيذ الحالية",
+      "الموقع الجغرافي",
       "تاريخ البدء",
       "تاريخ النهو",
-      "الملاحظات",
+      "الموقف التنفيذي",
     ];
 
     worksheet.addRow(headerRow1);
@@ -885,13 +939,19 @@ const ExportExcel = async (req, res) => {
           ? ((totalDisbursed / contractualValue) * 100).toFixed(2) + "%"
           : "0%",
         activity.progress || "0%",
+        activity.projectLocationLink
+          ? {
+              text: "اضغط لعرض الموقع",
+              hyperlink: activity.projectLocationLink,
+            }
+          : "",
         activity.receptionDate ? new Date(activity.receptionDate) : "",
         activity.completionDate ? new Date(activity.completionDate) : "",
         activity.executivePosition || "",
       ]);
     });
 
-    const columnsWidths = [10, 50, 25, 20, 15, 20, 20, 15, 15, 20, 20, 40];
+    const columnsWidths = [10, 50, 25, 20, 15, 20, 20, 15, 15, 30, 20, 20, 40];
     columnsWidths.forEach((w, i) => {
       worksheet.getColumn(i + 1).width = w;
       worksheet.getColumn(i + 1).alignment = {
@@ -901,8 +961,8 @@ const ExportExcel = async (req, res) => {
       };
     });
 
-    worksheet.eachRow((row) => {
-      row.eachCell((cell) => {
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
         cell.border = {
           top: { style: "thin" },
           left: { style: "thin" },
@@ -915,12 +975,17 @@ const ExportExcel = async (req, res) => {
           wrapText: true,
         };
 
-        if (row.number === 1) {
+        if (rowNumber === 1) {
           cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
           cell.fill = {
             type: "pattern",
             pattern: "solid",
             fgColor: { argb: "1F4E78" },
+          };
+        } else if (colNumber === 10 && cell.hyperlink) {
+          cell.font = {
+            color: { argb: "FF0000FF" },
+            underline: true,
           };
         }
       });
