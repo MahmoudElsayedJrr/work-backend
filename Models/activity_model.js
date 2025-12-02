@@ -120,19 +120,19 @@ const activitySchema = new mongoose.Schema(
       // الاستشاري
       type: String,
       trim: true,
-      default: "N/A",
+      default: "",
     },
     supervisorEngineer: {
       // المهندس المشرف
       type: String,
       trim: true,
-      default: "N/A",
+      default: "",
     },
 
     supervisorPhone: {
       type: String,
       trim: true,
-      default: "N/A",
+      default: "",
     },
     estimatedValue: {
       // قيمة التعاقديه
