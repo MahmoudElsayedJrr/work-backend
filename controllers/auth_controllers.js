@@ -5,6 +5,31 @@ const httpStatus = require("../utils/http_status");
 
 const register = async (req, res) => {
   const { name, role, password, email, region } = req.body;
+
+  const currentUserRegion = req.currentEmployee
+    ? req.currentEmployee.region
+    : null;
+
+  if (currentUserRegion && currentUserRegion !== "super") {
+    if (region.trim() !== currentUserRegion.trim()) {
+      return res
+        .status(403)
+        .json(
+          httpStatus.httpFaliureStatus(
+            `غير مسموح لك بتسجيل موظفين إلا في محافظتك: ${currentUserRegion}`
+          )
+        );
+    }
+
+    req.body.region = currentUserRegion.trim();
+  } else if (!region) {
+    return res
+      .status(400)
+      .json(
+        httpStatus.httpFaliureStatus("يجب تحديد المحافظة عند تسجيل موظف جديد")
+      );
+  }
+
   const oldEmployee = await employeeModel.findOne({ name });
   if (oldEmployee) {
     return res
@@ -15,7 +40,6 @@ const register = async (req, res) => {
         )
       );
   }
-  //console.log(employeeModel.schema.path("role").enumValues);
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
@@ -24,7 +48,7 @@ const register = async (req, res) => {
     email,
     role,
     password: hashedPassword,
-    region,
+    region: req.body.region,
   });
   const token = await generateJWT({
     name: newEmployee.name,
