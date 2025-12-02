@@ -3,10 +3,16 @@ const httpStatus = require("../utils/http_status");
 
 const GetAllEmployees = async (req, res) => {
   try {
-    const employees = await employeeModel.find({}, { __v: 0, password: 0 });
+    const regionFilter = req.regionFilter || {};
+
+    const employees = await employeeModel.find(regionFilter, {
+      __v: 0,
+      password: 0,
+    });
+
     res.status(200).json(httpStatus.httpSuccessStatus(employees));
   } catch (error) {
-    res.status(500).json(اhttpStatus.httpErrorStatus(error.message));
+    res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
 
@@ -17,7 +23,6 @@ const GetEmployeeById = async (req, res) => {
 
     if (!employee) return res.status(404).json(httpStatus.httpFaliureStatus());
 
-    // res.json(employee);
     res.status(200).json(httpStatus.httpSuccessStatus(employee));
   } catch (error) {
     res.status(400).json(httpStatus.httpErrorStatus(error.message));
@@ -27,16 +32,22 @@ const GetEmployeeById = async (req, res) => {
 const DeleteEmployee = async (req, res) => {
   try {
     const { name } = req.params;
-    const employee = await employeeModel.findOneAndDelete({ name });
+
+    const filter = {
+      name,
+      ...(req.regionFilter || {}),
+    };
+
+    const employee = await employeeModel.findOneAndDelete(filter);
 
     if (!employee)
       return res
         .status(404)
-        .json(httpStatus.httpFaliureStatus("Employee not found"));
+        .json(
+          httpStatus.httpFaliureStatus("ليس لديك الصلاحيات لتعديل هذا الموظف")
+        );
 
-    res
-      .status(200)
-      .json(httpStatus.httpSuccessStatus("Employee deleted successfully"));
+    res.status(200).json(httpStatus.httpSuccessStatus("نم حذف الموظف بنجاح"));
   } catch (error) {
     res.status(400).json(httpStatus.httpErrorStatus(error.message));
   }
@@ -45,8 +56,14 @@ const DeleteEmployee = async (req, res) => {
 const UpdateEmployee = async (req, res) => {
   try {
     const { name } = req.params;
+
+    const filter = {
+      name,
+      ...(req.regionFilter || {}),
+    };
+
     const updatedEmployee = await employeeModel.findOneAndUpdate(
-      { name },
+      filter,
       { $set: req.body },
       { new: true, runValidators: true, context: "query" }
     );
@@ -54,7 +71,9 @@ const UpdateEmployee = async (req, res) => {
     if (!updatedEmployee)
       return res
         .status(404)
-        .json(httpStatus.httpFaliureStatus("Employee not found"));
+        .json(
+          httpStatus.httpFaliureStatus("ليس لديك الصلاحيات لتعديل هذا الموظف")
+        );
 
     res.status(200).json(httpStatus.httpSuccessStatus(updatedEmployee));
   } catch (error) {
