@@ -10,7 +10,7 @@ const register = async (req, res) => {
     ? req.currentEmployee.region
     : null;
 
-  if (currentUserRegion && currentUserRegion !== "super") {
+  if (currentUserRegion && currentUserRegion !== "الكل") {
     if (region.trim() !== currentUserRegion.trim()) {
       return res
         .status(403)
@@ -22,23 +22,13 @@ const register = async (req, res) => {
     }
 
     req.body.region = currentUserRegion.trim();
-  } else if (!region) {
-    return res
-      .status(400)
-      .json(
-        httpStatus.httpFaliureStatus("يجب تحديد المحافظة عند تسجيل موظف جديد")
-      );
   }
 
   const oldEmployee = await employeeModel.findOne({ name });
   if (oldEmployee) {
     return res
       .status(400)
-      .json(
-        httpStatus.httpFaliureStatus(
-          "Employee with this national ID already exists"
-        )
-      );
+      .json(httpStatus.httpFaliureStatus("اسم المستخدم موجود من قبل"));
   }
 
   const salt = await bcrypt.genSalt(10);

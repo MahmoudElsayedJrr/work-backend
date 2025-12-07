@@ -10,7 +10,8 @@ const regionAccessMiddleware = (req, res, next) => {
         .json(httpStatus.httpFaliureStatus("User Not Found"));
     }
 
-    const isSuperAdmin = user.region === "super" || user.region === undefined;
+    const isSuperAdmin =
+      user.region === "الكل" || user.region === undefined || user.region === "";
 
     if (isSuperAdmin) {
       req.regionFilter = {};

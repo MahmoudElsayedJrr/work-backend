@@ -552,7 +552,7 @@ const buildActivityFilter = (query, regionFilter = {}) => {
 // ==================== جلب كل المشاريع ====================
 const GetAllActivites = async (req, res) => {
   try {
-    /*     console.log("=== GET ALL ACTIVITIES DEBUG ===");
+    console.log("=== GET ALL ACTIVITIES DEBUG ===");
     console.log("req.regionFilter:", JSON.stringify(req.regionFilter));
     console.log("req.userRegion:", req.userRegion);
     console.log(
@@ -565,10 +565,10 @@ const GetAllActivites = async (req, res) => {
           }
         : "undefined"
     );
-    console.log("req.query:", JSON.stringify(req.query)); */
+    console.log("req.query:", JSON.stringify(req.query));
 
     const sampleActivity = await ActivityModel.findOne({});
-    /*     console.log(
+    console.log(
       "📌 Sample Activity Fields:",
       sampleActivity
         ? {
@@ -579,7 +579,7 @@ const GetAllActivites = async (req, res) => {
             allFields: Object.keys(sampleActivity.toObject()),
           }
         : "No activities found"
-    ); */
+    );
 
     const totalActivities = await ActivityModel.countDocuments({});
     console.log("📊 Total Activities in DB (no filter):", totalActivities);
