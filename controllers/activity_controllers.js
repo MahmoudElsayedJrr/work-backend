@@ -1806,6 +1806,7 @@ const getTotalDisbursed = async (req, res) => {
 const getTotalContractualValue = async (req, res) => {
   try {
     const filter = buildActivityFilter(req.query, req.regionFilter);
+    console.log("الـ Filter النهائي هو:", req.regionFilter);
 
     const activities = await ActivityModel.find(filter, "contractualValue");
 

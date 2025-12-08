@@ -103,8 +103,18 @@ router.put(
   decisionControllers.updateDecision
 );
 
-router.get("/total-disbursed", controllers.getTotalDisbursed);
-router.get("/total-contractualValue", controllers.getTotalContractualValue);
+router.get(
+  "/total-disbursed",
+  verifyLogin,
+  regionAccessMiddleware,
+  controllers.getTotalDisbursed
+);
+router.get(
+  "/total-contractualValue",
+  verifyLogin,
+  regionAccessMiddleware,
+  controllers.getTotalContractualValue
+);
 
 router.get("/:activityCode", controllers.GetActivityById);
 router.delete(
