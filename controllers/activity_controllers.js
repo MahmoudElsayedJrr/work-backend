@@ -1546,13 +1546,18 @@ const UpdateActivity = async (req, res) => {
         );
     }
 
-    if (req.body.governorate && userRegion !== "super") {
+    if (
+      req.body.governorate &&
+      userRegion !== "الكل" &&
+      userRegion !== "" &&
+      userRegion !== null
+    ) {
       if (req.body.governorate.trim() !== activityToUpdate.governorate.trim()) {
         return res
           .status(403)
           .json(
             httpStatus.httpFaliureStatus(
-              "لا يمكنك تغيير المحافظة إلى محافظة أخرى"
+              `غير مسموح لك بتغيير المحافظة إلا في محافظتك: ${userRegion}`
             )
           );
       }
