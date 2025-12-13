@@ -15,6 +15,12 @@ router.post(
   controllers.register
 );
 router.post("/login", controllers.login);
+router.post(
+  "/unlock",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN),
+  controllers.unlockAccount
+);
 router.get("/me", verifyLogin, controllers.getProfile);
 router.put("/changePassword", verifyLogin, controllers.changePassword);
 

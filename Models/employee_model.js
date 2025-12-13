@@ -2,11 +2,6 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const employeeSchema = new mongoose.Schema(
   {
-    /*  nationalId: {
-      type: String,
-      required: [true, "Id is required"],
-      unique: true,
-    }, */
     name: {
       type: String,
       required: [true, "Name is required"],
@@ -14,7 +9,7 @@ const employeeSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (value) {
-          return !/\s/.test(value); // يرجع false لو فيه أي مسافة
+          return !/\s/.test(value);
         },
         message: "Name must not contain spaces",
       },
@@ -58,6 +53,19 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [8, "Password must be at least 8 characters long"],
+    },
+
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+    lockedAt: {
+      type: Date,
+      default: null,
     },
 
     token: {
