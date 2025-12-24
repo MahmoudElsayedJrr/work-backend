@@ -46,7 +46,7 @@ router.post(
 router.post(
   "/delete-image",
   verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  allowedTo(userRoles.ADMIN, userRoles.EXECUTIVE),
   controllers.DeleteImageFromActivity
 );
 

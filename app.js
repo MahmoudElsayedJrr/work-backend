@@ -16,6 +16,8 @@ app.use(cors({ origin: "*" }));
 app.use(express.json());
 connectDB();
 
+
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/governorate", governorateRoutes);
@@ -24,7 +26,9 @@ app.use("/auth", authRoutes);
 app.use("/employee", employeeRoutes);
 app.use("/activity", activityRoutes);
 
-const PORT = process.env.PORT || 3000;
+
+
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
