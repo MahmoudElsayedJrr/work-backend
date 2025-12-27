@@ -163,6 +163,11 @@ const activitySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    originalCompletionDate: {
+      // تاريخ النهو الاصلي
+      type: Date,
+      default: null,
+    },
     completionDate: {
       // تاريخ النهو
       type: Date,
@@ -177,6 +182,7 @@ const activitySchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // تاريخ مد المده
     extension: [
       {
         extensionNumber: {
@@ -185,9 +191,13 @@ const activitySchema = new mongoose.Schema(
         },
 
         extensionDate: {
-          // تاريخ مد المده
           type: Date,
           default: null,
+        },
+
+        createdAt: {
+          type: Date,
+          default: Date.now,
         },
       },
     ],

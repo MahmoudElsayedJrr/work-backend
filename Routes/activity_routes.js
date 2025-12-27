@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const controllers = require("../controllers/activity_controllers");
 const decisionControllers = require("../controllers/decision_controllers");
+const extensionControllers = require("../controllers/extension_controllers");
 const contractsControllers = require("../controllers/contracts_controllers");
 const extractController = require("../controllers/extract_controllers");
 const verifyLogin = require("../middlewares/verifyLogin");
@@ -48,6 +49,20 @@ router.post(
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.EXECUTIVE),
   controllers.DeleteImageFromActivity
+);
+
+router.put(
+  "/extension/:activityCode/:extensionIndex",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
+  extensionControllers.UpdateExtension
+);
+
+router.delete(
+  "/extension/:activityCode/:extensionIndex",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
+  extensionControllers.DeleteExtension
 );
 
 router.post(
