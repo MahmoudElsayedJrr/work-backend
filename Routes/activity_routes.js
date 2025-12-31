@@ -40,14 +40,14 @@ router.get(
 router.post(
   "/delete-pdf/:bucketName",
   verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER, userRoles.EXECUTIVE),
   controllers.DeletePdfFromActivity
 );
 
 router.post(
   "/delete-image",
   verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.EXECUTIVE),
+  allowedTo(userRoles.ADMIN, userRoles.EXECUTIVE, userRoles.MANAGER),
   controllers.DeleteImageFromActivity
 );
 
@@ -85,16 +85,25 @@ router.delete(
   allowedTo(userRoles.ADMIN, userRoles.FINANCIAL),
   extractController.deleteExtract
 );
-/* router.delete(
-  "/extract/:extractId/pdf/:pdfId",
-  extractController.deleteExtractPDF
-); */
 
-router.put(
+router.post(
   "/contract/:activityCode",
   verifyLogin,
-  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
   contractsControllers.AddContractForActivity
+);
+
+router.put(
+  "/contract/:activityCode/:contractNumber",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
+  contractsControllers.UpdateContractForActivity
+);
+router.delete(
+  "/contract/:activityCode/:contractNumber",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
+  contractsControllers.DeleteContractForActivity
 );
 
 router.put(

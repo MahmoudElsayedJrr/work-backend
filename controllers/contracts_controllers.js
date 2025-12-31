@@ -42,136 +42,80 @@ const AddContractForActivity = async (req, res) => {
   }
 };
 
-/* const DeleteDecisionById = async (req, res) => {
+const UpdateContractForActivity = async (req, res) => {
   try {
-    const { activityCode, decisionId } = req.params;
-    if (
-      !decisionId ||
-      !require("mongoose").Types.ObjectId.isValid(decisionId)
-    ) {
-      return res
-        .status(400)
-        .json(httpStatus.httpFaliureStatus("Invalid decision ID format"));
-    }
+    const { activityCode, contractNumber } = req.params;
+    const updateData = req.body;
 
-    // Find the activity and remove the specific decision
-    const updatedActivity = await ActivityModel.findOneAndUpdate(
-      { activityCode: activityCode.toUpperCase() },
-      { $pull: { decision: { _id: decisionId } } },
-      { new: true, runValidators: true }
-    );
+    const activity = await ActivityModel.findOne({
+      activityCode: activityCode.toUpperCase(),
+    });
 
-    if (!updatedActivity) {
+    if (!activity)
       return res
         .status(404)
         .json(httpStatus.httpFaliureStatus("Activity not found"));
-    }
 
-    // Check if the decision was actually removed
-    const decisionExists = updatedActivity.decision.some(
-      (decision) => decision._id.toString() === decisionId
+    const contractIndex = activity.contract.findIndex(
+      (c) => c.contractNumber === parseInt(contractNumber)
     );
 
-    if (decisionExists) {
+    if (contractIndex === -1)
       return res
         .status(404)
-        .json(
-          httpStatus.httpFaliureStatus("Decision not found in this activity")
-        );
-    }
+        .json(httpStatus.httpFaliureStatus("Contract not found"));
 
-    res.status(200).json(
-      httpStatus.httpSuccessStatus({
-        message: "Decision deleted successfully",
-        activity: updatedActivity,
-      })
-    );
+    activity.contract[contractIndex] = {
+      ...activity.contract[contractIndex].toObject(),
+      ...updateData,
+      contractNumber: activity.contract[contractIndex].contractNumber,
+    };
+
+    await activity.save();
+
+    res.status(200).json(httpStatus.httpSuccessStatus(activity.contract));
   } catch (error) {
-    console.error("خطأ في حذف البند:", error);
+    res
+      .status(500)
+      .json({ message: "حدث خطأ أثناء التعديل", error: error.message });
+  }
+};
+
+const DeleteContractForActivity = async (req, res) => {
+  try {
+    const { activityCode, contractNumber } = req.params;
+
+    const activity = await ActivityModel.findOne({
+      activityCode: activityCode.toUpperCase(),
+    });
+
+    if (!activity)
+      return res
+        .status(404)
+        .json(httpStatus.httpFaliureStatus("Activity not found"));
+
+    const contractIndex = activity.contract.findIndex(
+      (c) => c.contractNumber === parseInt(contractNumber)
+    );
+
+    if (contractIndex === -1)
+      return res
+        .status(404)
+        .json(httpStatus.httpFaliureStatus("Contract not found"));
+
+    activity.contract.splice(contractIndex, 1);
+    await activity.save();
+
+    res.status(200).json(httpStatus.httpSuccessStatus(activity.contract));
+  } catch (error) {
     res
       .status(500)
       .json({ message: "حدث خطأ أثناء الحذف", error: error.message });
   }
 };
 
-const updateDecision = async (req, res) => {
-  try {
-    const { activityCode, decisionId } = req.params;
-    const updateData = req.body;
-
-    // Validate decisionId format
-    if (!decisionId || !mongoose.Types.ObjectId.isValid(decisionId)) {
-      return res
-        .status(400)
-        .json(httpStatus.httpFaliureStatus("Invalid decision ID format"));
-    }
-
-    // Validate required fields
-    const {
-      decisionName,
-      decisionType,
-      decisionQuantity,
-      decisionPrice,
-      decisionUnit,
-    } = updateData;
-
-    // Convert to numbers and validate
-    const quantity = parseFloat(decisionQuantity) || 0;
-    const price = parseFloat(decisionPrice) || 0;
-    const total = quantity * price;
-
-    // Prepare the update object
-    const updateObject = {
-      "decision.$.decisionName": decisionName,
-      "decision.$.decisionType": decisionType,
-      "decision.$.decisionQuantity": quantity,
-      "decision.$.decisionUnit": decisionUnit,
-      "decision.$.decisionPrice": price,
-      "decision.$.decisionTotal": total,
-    };
-
-    // Update the specific decision using array filters
-    const updatedActivity = await ActivityModel.findOneAndUpdate(
-      {
-        activityCode: activityCode.toUpperCase(),
-        "decision._id": decisionId,
-      },
-      { $set: updateObject },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedActivity) {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Activity or decision not found"));
-    }
-
-    // Find the updated decision to return it
-    const updatedDecision = updatedActivity.decision.find(
-      (decision) => decision._id.toString() === decisionId
-    );
-
-    if (!updatedDecision) {
-      return res
-        .status(404)
-        .json(httpStatus.httpFaliureStatus("Decision not found after update"));
-    }
-
-    res.status(200).json(
-      httpStatus.httpSuccessStatus({
-        message: "Decision updated successfully",
-        decision: updatedDecision,
-        activity: updatedActivity,
-      })
-    );
-  } catch (error) {
-    console.error("خطأ في تحديث البند:", error);
-    res
-      .status(500)
-      .json({ message: "حدث خطأ أثناء التحديث", error: error.message });
-  }
-}; */
-
 module.exports = {
   AddContractForActivity,
+  UpdateContractForActivity,
+  DeleteContractForActivity,
 };
