@@ -888,8 +888,8 @@ const ExportExcel = async (req, res) => {
         activity.activityName || "",
         activity.executingCompany || "",
         activity.governorate || "",
-        activity.contractualValue || 0,
         activity.estimatedValue || 0,
+        activity.contractualValue || 0,
 
         currentYearDisbursed,
         totalDisbursed,
