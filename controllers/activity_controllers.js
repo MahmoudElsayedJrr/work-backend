@@ -48,6 +48,22 @@ const buildActivityFilter = (query, regionFilter = {}) => {
     filter.activityCode = query.activityCode.toUpperCase();
   }
 
+  if (query.hasContract && query.hasContract !== "الكل") {
+    if (query.hasContract === "نعم" || query.hasContract === "true") {
+      filter["contract.0"] = { $exists: true };
+    } else if (query.hasContract === "لا" || query.hasContract === "false") {
+      filter["contract.0"] = { $exists: false };
+    }
+  }
+
+  if (query.hasExtension && query.hasExtension !== "الكل") {
+    if (query.hasExtension === "نعم" || query.hasExtension === "true") {
+      filter["extension.0"] = { $exists: true };
+    } else if (query.hasExtension === "لا" || query.hasExtension === "false") {
+      filter["extension.0"] = { $exists: false };
+    }
+  }
+
   if (query.disbursedPercentageMin || query.disbursedPercentageMax) {
     const percentageExpr = {
       $multiply: [
