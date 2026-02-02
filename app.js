@@ -8,6 +8,7 @@ const path = require("path");
 const cors = require("cors");
 const connectDB = require("./utils/connect_db");
 const express = require("express");
+const updateDelayedProjects = require("./utils/cornUpdateAllAactivites");
 
 const app = express();
 
@@ -15,8 +16,7 @@ app.use(cors({ origin: "*" }));
 
 app.use(express.json());
 connectDB();
-
-
+updateDelayedProjects();
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -25,8 +25,6 @@ app.use("/governorate", governorateRoutes);
 app.use("/auth", authRoutes);
 app.use("/employee", employeeRoutes);
 app.use("/activity", activityRoutes);
-
-
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

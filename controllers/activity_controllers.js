@@ -501,8 +501,12 @@ const UpdateActivity = async (req, res) => {
         extensionNumber: nextExtensionNumber,
         extensionDate: req.body.extensionDate,
       });
+      const extensionDate = new Date(req.body.extensionDate);
+      activityToUpdate.completionDate = extensionDate;
 
-      activityToUpdate.completionDate = req.body.extensionDate;
+      if (activityToUpdate.status === "متأخر" && extensionDate > Date.now()) {
+        activityToUpdate.status = "قيد التنفيذ";
+      }
     }
 
     if (

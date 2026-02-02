@@ -74,6 +74,15 @@ const UpdateExtension = async (req, res) => {
 
     if (index === activity.extension.length - 1) {
       activity.completionDate = newExtensionDate;
+
+      if (activity.status === "متأخر" && newExtensionDate > Date.now()) {
+        activity.status = "قيد التنفيذ";
+      } else if (
+        activity.status === "قيد التنفيذ" &&
+        newExtensionDate < Date.now()
+      ) {
+        activity.status = "متأخر";
+      }
     }
 
     await activity.save();
