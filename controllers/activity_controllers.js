@@ -632,6 +632,9 @@ const GetActivitiesStatistics = async (req, res) => {
           withdrawn: {
             $sum: { $cond: [{ $eq: ["$status", "مسحوب"] }, 1, 0] },
           },
+          late: {
+            $sum: { $cond: [{ $eq: ["$status", "متأخر"] }, 1, 0] },
+          },
           inProgress: {
             $sum: {
               $cond: [{ $eq: ["$status", "قيد التنفيذ"] }, 1, 0],
@@ -656,6 +659,7 @@ const GetActivitiesStatistics = async (req, res) => {
           begin: 1,
           completed: 1,
           withdrawn: 1,
+          late: 1,
           inProgress: 1,
           suspended: 1,
           initialDelivery: 1,
@@ -684,19 +688,15 @@ const getTotalDisbursed = async (req, res) => {
 
     const filter = buildActivityFilter(queryForFilter, req.regionFilter);
 
-    // جلب المشاريع
     const activities = await ActivityModel.find(filter, "extract activityCode");
 
-    // حساب الإجمالي العام بدون تكرار
     const totalDisbursed = activities.reduce((total, activity) => {
       const extracts = Array.isArray(activity.extract) ? activity.extract : [];
 
-      // فلترة حسب السنة المالية لو موجودة
       const extractsToSum = targetFiscalYear
         ? extracts.filter((ex) => ex.extractFiscalYear === targetFiscalYear)
         : extracts;
 
-      // مجموع المشروع نفسه
       const projectTotal = extractsToSum.reduce(
         (sum, ex) => sum + (ex.extractValue || 0),
         0
@@ -713,11 +713,32 @@ const getTotalDisbursed = async (req, res) => {
 // ==================== إجمالي المخصص المالي ====================
 const getTotalContractualValue = async (req, res) => {
   try {
-    const filter = buildActivityFilter(req.query, req.regionFilter);
-    console.log("الـ Filter النهائي هو:", req.regionFilter);
+    // استخراج السنة المالية
+    const targetFiscalYear =
+      req.query.extractFiscalYear || req.query.fiscalYear;
 
-    const activities = await ActivityModel.find(filter, "contractualValue");
+    // نسخ الـ query وحذف المعاملات
+    let queryForFilter = { ...req.query };
+    delete queryForFilter.extractFiscalYear;
+    delete queryForFilter.fiscalYear;
 
+    // بناء الفلتر الأساسي
+    const filter = buildActivityFilter(queryForFilter, req.regionFilter);
+
+    // ✅ إضافة فلتر السنة المالية بعد بناء الفلتر
+    if (targetFiscalYear) {
+      filter.fiscalYear = targetFiscalYear;
+    }
+
+    console.log("الـ Filter النهائي هو:", filter);
+
+    // جلب المشاريع
+    const activities = await ActivityModel.find(
+      filter,
+      "contractualValue activityCode fiscalYear"
+    );
+
+    // حساب الإجمالي
     const totalContractualValue = activities.reduce(
       (sum, activity) => sum + (activity.contractualValue || 0),
       0
