@@ -36,6 +36,10 @@ const buildActivityFilter = (query, regionFilter = {}) => {
     filter.fundingSource = query.fundingSource;
   }
 
+  if (query.fiscalYear && query.fiscalYear !== "الكل") {
+    filter.fiscalYear = query.fiscalYear;
+  }
+
   if (query.fundingType && query.fundingType !== "الكل") {
     filter.fundingType = query.fundingType;
   }
@@ -713,32 +717,26 @@ const getTotalDisbursed = async (req, res) => {
 // ==================== إجمالي المخصص المالي ====================
 const getTotalContractualValue = async (req, res) => {
   try {
-    // استخراج السنة المالية
     const targetFiscalYear =
       req.query.extractFiscalYear || req.query.fiscalYear;
 
-    // نسخ الـ query وحذف المعاملات
     let queryForFilter = { ...req.query };
     delete queryForFilter.extractFiscalYear;
     delete queryForFilter.fiscalYear;
 
-    // بناء الفلتر الأساسي
     const filter = buildActivityFilter(queryForFilter, req.regionFilter);
 
-    // ✅ إضافة فلتر السنة المالية بعد بناء الفلتر
     if (targetFiscalYear) {
       filter.fiscalYear = targetFiscalYear;
     }
 
     console.log("الـ Filter النهائي هو:", filter);
 
-    // جلب المشاريع
     const activities = await ActivityModel.find(
       filter,
       "contractualValue activityCode fiscalYear"
     );
 
-    // حساب الإجمالي
     const totalContractualValue = activities.reduce(
       (sum, activity) => sum + (activity.contractualValue || 0),
       0
