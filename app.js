@@ -9,7 +9,7 @@ const cors = require("cors");
 const connectDB = require("./utils/connect_db");
 const express = require("express");
 const updateDelayedProjects = require("./utils/cornUpdateAllAactivites");
-
+const budgetRoutes = require("./Routes/budget_routes");
 const app = express();
 
 app.use(cors({ origin: "*" }));
@@ -25,6 +25,7 @@ app.use("/company", companyRoutes);
 app.use("/auth", authRoutes);
 app.use("/employee", employeeRoutes);
 app.use("/activity", activityRoutes);
+app.use("/budget", budgetRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

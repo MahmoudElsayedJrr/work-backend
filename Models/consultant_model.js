@@ -19,10 +19,9 @@ const consultantSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
-consultantSchema.index({ name: 1 });
 consultantSchema.index({ createdAt: -1 });
 
 consultantSchema.pre("save", function (next) {
