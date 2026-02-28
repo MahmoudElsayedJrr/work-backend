@@ -4,6 +4,7 @@ const {
   upsertBudget,
   getAllBudgets,
   getBudgetByYear,
+  deleteBudget,
 } = require("../controllers/budgetByYear_controllers");
 const verifyLogin = require("../middlewares/verifyLogin");
 const allowedTo = require("../middlewares/allowedTo");
@@ -19,5 +20,12 @@ router.post(
 router.get("/", verifyLogin, getAllBudgets);
 
 router.get("/:fiscalYear", verifyLogin, getBudgetByYear);
+
+router.delete(
+  "/:id",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  deleteBudget,
+);
 
 module.exports = router;

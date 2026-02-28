@@ -76,8 +76,27 @@ const getBudgetByYear = async (req, res) => {
   }
 };
 
+const deleteBudget = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const budget = await Budget.findByIdAndDelete(id);
+
+    if (!budget) {
+      return res
+        .status(404)
+        .json(httpFaliureStatus("المخصص غير موجود في قاعدة البيانات"));
+    }
+
+    res.status(200).json(httpSuccessStatus("تم الحذف بنجاح"));
+  } catch (error) {
+    res.status(500).json(httpErrorStatus(error.message));
+  }
+};
+
 module.exports = {
   upsertBudget,
   getAllBudgets,
   getBudgetByYear,
+  deleteBudget,
 };
