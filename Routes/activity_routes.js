@@ -12,57 +12,78 @@ const allowedTo = require("../middlewares/allowedTo");
 const userRoles = require("../utils/user_roles");
 
 router.get(
+  "/payout-percentage",
+  verifyLogin,
+  regionAccessMiddleware,
+  controllers.getPayoutPercentage,
+);
+
+router.get(
+  "/total-disbursed",
+  verifyLogin,
+  regionAccessMiddleware,
+  controllers.getTotalDisbursed,
+);
+router.get(
+  "/total-contractualValue",
+  verifyLogin,
+  regionAccessMiddleware,
+  controllers.getTotalContractualValue,
+);
+
+router.get(
   "/export-excel",
   verifyLogin,
   regionAccessMiddleware,
-  controllers.ExportExcel
+  controllers.ExportExcel,
 );
 router.post(
   "/",
   verifyLogin,
   regionAccessMiddleware,
   allowedTo(userRoles.ADMIN, userRoles.MANAGER),
-  controllers.AddNewActivity
+  controllers.AddNewActivity,
 );
 
 router.get(
   "/",
   verifyLogin,
   regionAccessMiddleware,
-  controllers.GetAllActivites
+  controllers.GetAllActivites,
 );
+
 router.get(
   "/statistics",
   verifyLogin,
   regionAccessMiddleware,
-  controllers.GetActivitiesStatistics
+  controllers.GetActivitiesStatistics,
 );
 router.post(
   "/delete-pdf/:bucketName",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.MANAGER, userRoles.EXECUTIVE),
-  controllers.DeletePdfFromActivity
+  controllers.DeletePdfFromActivity,
 );
 
 router.post(
   "/delete-image",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.EXECUTIVE, userRoles.MANAGER),
-  controllers.DeleteImageFromActivity
+  controllers.DeleteImageFromActivity,
 );
 
 router.put(
   "/extension/:activityCode/:extensionIndex",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  extensionControllers.UpdateExtension
+  extensionControllers.UpdateExtension,
 );
 
 router.delete(
   "/extension/:activityCode/:extensionIndex",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  extensionControllers.DeleteExtension
+  extensionControllers.DeleteExtension,
 );
 
 router.post(
@@ -70,74 +91,61 @@ router.post(
   /*   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.FINANCIAL), */
   upload.array("extractpdfs", 5),
-  extractController.addExtract
+  extractController.addExtract,
 );
 router.put(
   "/extract/:activityCode/:extractId",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.FINANCIAL),
   upload.array("extractpdfs"),
-  extractController.updateExtract
+  extractController.updateExtract,
 );
 router.delete(
   "/extract/:activityCode/:extractId",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.FINANCIAL),
-  extractController.deleteExtract
+  extractController.deleteExtract,
 );
 
 router.post(
   "/contract/:activityCode",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  contractsControllers.AddContractForActivity
+  contractsControllers.AddContractForActivity,
 );
 
 router.put(
   "/contract/:activityCode/:contractNumber",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  contractsControllers.UpdateContractForActivity
+  contractsControllers.UpdateContractForActivity,
 );
 router.delete(
   "/contract/:activityCode/:contractNumber",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  contractsControllers.DeleteContractForActivity
+  contractsControllers.DeleteContractForActivity,
 );
 
 router.put(
   "/decision/:activityCode",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  decisionControllers.AddDecisionForActivity
+  decisionControllers.AddDecisionForActivity,
 );
 
 router.delete(
   "/decision/:activityCode/:decisionId",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  decisionControllers.DeleteDecisionById
+  decisionControllers.DeleteDecisionById,
 );
 
 router.put(
   "/decision/:activityCode/:decisionId",
   verifyLogin,
   allowedTo(userRoles.ADMIN, userRoles.PROJETMANAGER),
-  decisionControllers.updateDecision
-);
-
-router.get(
-  "/total-disbursed",
-  verifyLogin,
-  regionAccessMiddleware,
-  controllers.getTotalDisbursed
-);
-router.get(
-  "/total-contractualValue",
-  verifyLogin,
-  regionAccessMiddleware,
-  controllers.getTotalContractualValue
+  decisionControllers.updateDecision,
 );
 
 router.get("/:activityCode", controllers.GetActivityById);
@@ -145,8 +153,9 @@ router.delete(
   "/:activityCode",
   verifyLogin,
   allowedTo(userRoles.ADMIN),
-  controllers.DeleteActivity
+  controllers.DeleteActivity,
 );
+
 router.put(
   "/:activityCode",
   verifyLogin,
@@ -157,14 +166,14 @@ router.put(
     userRoles.FINANCIAL,
     userRoles.PROJETMANAGER,
     userRoles.CONTRACTUAL,
-    userRoles.EXECUTIVE
+    userRoles.EXECUTIVE,
   ),
   upload.fields([
     { name: "images", maxCount: 3 },
     { name: "activitypdfs", maxCount: 3 },
     { name: "contractualDocuments", maxCount: 3 },
   ]),
-  controllers.UpdateActivity
+  controllers.UpdateActivity,
 );
 
 module.exports = router;

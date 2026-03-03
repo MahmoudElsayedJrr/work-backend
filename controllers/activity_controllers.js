@@ -7,6 +7,7 @@ const saveImageLocally = require("../utils/uploadImage");
 const savePdfLocally = require("../utils/uploadPDF");
 const path = require("path");
 const mongoose = require("mongoose");
+const Budget = require("../Models/budget_model");
 
 const buildActivityFilter = (query, regionFilter = {}) => {
   const filter = {};
@@ -134,8 +135,8 @@ const AddNewActivity = async (req, res) => {
           .status(403)
           .json(
             httpStatus.httpFaliureStatus(
-              `غير مسموح لك بإضافة مشاريع إلا في محافظتك: ${req.userRegion}`
-            )
+              `غير مسموح لك بإضافة مشاريع إلا في محافظتك: ${req.userRegion}`,
+            ),
           );
       }
     } else if (!req.body.governorate) {
@@ -152,7 +153,9 @@ const AddNewActivity = async (req, res) => {
       return res
         .status(400)
         .json(
-          httpStatus.httpFaliureStatus("Activity with this code already exists")
+          httpStatus.httpFaliureStatus(
+            "Activity with this code already exists",
+          ),
         );
     }
 
@@ -180,7 +183,7 @@ const AddNewActivity = async (req, res) => {
             ? parseFloat(roaddetails.rc[0]) || 0
             : parseFloat(roaddetails.rc) || 0,
           remainingQuantitiesTons: Array.isArray(
-            roaddetails.remainingQuantitiesTons
+            roaddetails.remainingQuantitiesTons,
           )
             ? parseFloat(roaddetails.remainingQuantitiesTons[0]) || 0
             : parseFloat(roaddetails.remainingQuantitiesTons) || 0,
@@ -228,7 +231,7 @@ const GetActivityById = async (req, res) => {
       return res
         .status(404)
         .json(
-          httpStatus.httpFaliureStatus("Activity not found or not accessible")
+          httpStatus.httpFaliureStatus("Activity not found or not accessible"),
         );
     }
 
@@ -256,8 +259,8 @@ const DeleteActivity = async (req, res) => {
         .status(404)
         .json(
           httpStatus.httpFaliureStatus(
-            "Activity not found or you don't have permission to delete it"
-          )
+            "Activity not found or you don't have permission to delete it",
+          ),
         );
     }
 
@@ -283,7 +286,7 @@ const DeleteActivity = async (req, res) => {
             process.cwd(),
             "uploads",
             folderName,
-            fileName
+            fileName,
           );
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -303,8 +306,8 @@ const DeleteActivity = async (req, res) => {
       .status(200)
       .json(
         httpStatus.httpSuccessStatus(
-          "Activity and its files deleted successfully"
-        )
+          "Activity and its files deleted successfully",
+        ),
       );
   } catch (error) {
     console.error("Error in DeleteActivity:", error);
@@ -431,8 +434,8 @@ const UpdateActivity = async (req, res) => {
         .status(401)
         .json(
           httpStatus.httpFaliureStatus(
-            "Authentication failed: User role not found."
-          )
+            "Authentication failed: User role not found.",
+          ),
         );
     }
 
@@ -448,8 +451,8 @@ const UpdateActivity = async (req, res) => {
         .status(404)
         .json(
           httpStatus.httpFaliureStatus(
-            "Activity not found or you don't have permission to update it"
-          )
+            "Activity not found or you don't have permission to update it",
+          ),
         );
     }
 
@@ -464,8 +467,8 @@ const UpdateActivity = async (req, res) => {
           .status(403)
           .json(
             httpStatus.httpFaliureStatus(
-              `غير مسموح لك بتغيير المحافظة إلا في محافظتك: ${userRegion}`
-            )
+              `غير مسموح لك بتغيير المحافظة إلا في محافظتك: ${userRegion}`,
+            ),
           );
       }
 
@@ -562,7 +565,7 @@ const UpdateActivity = async (req, res) => {
       for (const file of req.files.contractualDocuments) {
         const { publicUrl, originalName } = await savePdfLocally(
           file,
-          "contractualDocuments"
+          "contractualDocuments",
         );
         activityToUpdate.contractualDocuments.push({
           filename: originalName,
@@ -577,7 +580,7 @@ const UpdateActivity = async (req, res) => {
       for (const file of req.files.activitypdfs) {
         const { publicUrl, originalName } = await savePdfLocally(
           file,
-          "activitypdfs"
+          "activitypdfs",
         );
         activityToUpdate.activitypdfs.push({
           filename: originalName,
@@ -680,6 +683,101 @@ const GetActivitiesStatistics = async (req, res) => {
   }
 };
 
+const getPayoutPercentage = async (req, res) => {
+  try {
+    const { fiscalYear } = req.query;
+    if (!fiscalYear || fiscalYear === "الكل") {
+      return res
+        .status(400)
+        .json(httpStatus.httpFaliureStatus("برجاء تحديد السنة المالية"));
+    }
+
+    const budget = await Budget.findOne({ fiscalYear: fiscalYear.trim() });
+
+    if (!budget || !budget.amount) {
+      return res
+        .status(404)
+        .json(
+          httpStatus.httpFaliureStatus(`مفيش مخصص مالي للسنة ${fiscalYear}`),
+        );
+    }
+
+    console.log("=== getPayoutPercentage DEBUG ===");
+    console.log("fiscalYear المطلوبة:", fiscalYear);
+    console.log("budget.amount من الداتابيز:", budget.amount);
+
+    let queryForFilter = { ...req.query };
+    delete queryForFilter.fiscalYear;
+
+    const filter = buildActivityFilter(queryForFilter, req.regionFilter);
+    console.log("filter المستخدم:", JSON.stringify(filter, null, 2));
+
+    const activities = await ActivityModel.find(filter, "extract");
+    console.log("عدد الأنشطة اللي اتجبت:", activities.length);
+
+    let grandTotal = 0;
+
+    const totalDisbursed = activities.reduce((total, activity) => {
+      const extracts = Array.isArray(activity.extract) ? activity.extract : [];
+
+      const extractsToSum = extracts.filter(
+        (ex) => ex.extractFiscalYear === fiscalYear,
+      );
+
+      const projectTotal = extractsToSum.reduce(
+        (sum, ex) => sum + (ex.extractValue || 0),
+        0,
+      );
+
+      // 🔍 طباعة كل activity فيها مستخلصات للسنة دي
+      if (extractsToSum.length > 0) {
+        console.log(`  ↳ activity extracts للسنة ${fiscalYear}:`);
+        extractsToSum.forEach((ex) => {
+          console.log(
+            `      extractFiscalYear: "${ex.extractFiscalYear}" | extractValue: ${ex.extractValue}`,
+          );
+        });
+        console.log(`      projectTotal: ${projectTotal}`);
+      }
+
+      grandTotal += projectTotal;
+      return total + projectTotal;
+    }, 0);
+
+    console.log("---");
+    console.log("totalDisbursed الإجمالي:", totalDisbursed);
+    console.log("budget.amount:", budget.amount);
+    console.log(
+      "النسبة:",
+      `(${totalDisbursed} / ${budget.amount}) * 100 = ${(totalDisbursed / budget.amount) * 100}`,
+    );
+    console.log("=================================");
+
+    const budgetAmount = budget.amount;
+    const percentage = (totalDisbursed / budgetAmount) * 100;
+
+    res.json(
+      httpStatus.httpSuccessStatus({
+        fiscalYear,
+        budget: budgetAmount,
+        totalDisbursed,
+        percentage: Math.round(percentage * 100) / 100,
+        status:
+          percentage >= 100
+            ? "exceeded"
+            : percentage >= 75
+              ? "high"
+              : percentage >= 50
+                ? "medium"
+                : "low",
+      }),
+    );
+  } catch (error) {
+    console.error("ERROR في getPayoutPercentage:", error.message);
+    res.status(500).json(httpStatus.httpErrorStatus(error.message));
+  }
+};
+
 // ==================== إجمالي المنصرف ====================
 const getTotalDisbursed = async (req, res) => {
   try {
@@ -703,7 +801,7 @@ const getTotalDisbursed = async (req, res) => {
 
       const projectTotal = extractsToSum.reduce(
         (sum, ex) => sum + (ex.extractValue || 0),
-        0
+        0,
       );
 
       return total + projectTotal;
@@ -734,12 +832,12 @@ const getTotalContractualValue = async (req, res) => {
 
     const activities = await ActivityModel.find(
       filter,
-      "contractualValue activityCode fiscalYear"
+      "contractualValue activityCode fiscalYear",
     );
 
     const totalContractualValue = activities.reduce(
       (sum, activity) => sum + (activity.contractualValue || 0),
-      0
+      0,
     );
 
     res.json(httpStatus.httpSuccessStatus({ totalContractualValue }));
@@ -780,8 +878,8 @@ const DeletePdfFromActivity = async (req, res) => {
         .status(404)
         .json(
           httpStatus.httpFaliureStatus(
-            "Project not found or you don't have permission"
-          )
+            "Project not found or you don't have permission",
+          ),
         );
     }
 
@@ -793,7 +891,7 @@ const DeletePdfFromActivity = async (req, res) => {
     }
 
     activity[fieldName] = activity[fieldName].filter(
-      (pdf) => pdf.path !== pdfPath
+      (pdf) => pdf.path !== pdfPath,
     );
     await activity.save();
 
@@ -823,8 +921,8 @@ const DeleteImageFromActivity = async (req, res) => {
         .status(404)
         .json(
           httpStatus.httpFaliureStatus(
-            "Project not found or you don't have permission"
-          )
+            "Project not found or you don't have permission",
+          ),
         );
     }
 
@@ -833,7 +931,7 @@ const DeleteImageFromActivity = async (req, res) => {
       process.cwd(),
       "uploads",
       "activityimages",
-      fileName
+      fileName,
     );
 
     if (fs.existsSync(filePath)) {
@@ -895,7 +993,7 @@ const ExportExcel = async (req, res) => {
       const totalDisbursed =
         activity.extract?.reduce(
           (sum, ext) => sum + (ext.extractValue || 0),
-          0
+          0,
         ) || 0;
 
       const currentYearDisbursed =
@@ -978,12 +1076,12 @@ const ExportExcel = async (req, res) => {
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader(
       "Content-Disposition",
       "attachment; filename*=UTF-8''" +
-        encodeURIComponent("تقرير_المشروعات.xlsx")
+        encodeURIComponent("تقرير_المشروعات.xlsx"),
     );
 
     await workbook.xlsx.write(res);
@@ -1014,20 +1112,20 @@ const DeleteDecisionById = async (req, res) => {
     const updatedActivity = await ActivityModel.findOneAndUpdate(
       query,
       { $pull: { decision: { _id: decisionId } } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!updatedActivity) {
       return res
         .status(404)
         .json(
-          httpStatus.httpFaliureStatus("Activity not found or not accessible")
+          httpStatus.httpFaliureStatus("Activity not found or not accessible"),
         );
     }
 
     // يجب التحقق من عدم وجود القرار بعد التحديث للعثور على الخطأ بشكل صحيح
     const decisionExistsAfterPull = updatedActivity.decision.some(
-      (decision) => decision._id.toString() === decisionId
+      (decision) => decision._id.toString() === decisionId,
     );
 
     if (decisionExistsAfterPull) {
@@ -1041,7 +1139,7 @@ const DeleteDecisionById = async (req, res) => {
       httpStatus.httpSuccessStatus({
         message: "Decision deleted successfully",
         activity: updatedActivity,
-      })
+      }),
     );
   } catch (error) {
     console.error("خطأ في حذف البند:", error);
@@ -1064,4 +1162,5 @@ module.exports = {
   GetActivitiesStatistics,
   getTotalContractualValue,
   DeleteDecisionById,
+  getPayoutPercentage,
 };

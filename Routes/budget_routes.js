@@ -17,7 +17,12 @@ router.post(
   upsertBudget,
 );
 
-router.get("/", verifyLogin, getAllBudgets);
+router.get(
+  "/",
+  verifyLogin,
+  allowedTo(userRoles.ADMIN, userRoles.MANAGER),
+  getAllBudgets,
+);
 
 router.get("/:fiscalYear", verifyLogin, getBudgetByYear);
 
