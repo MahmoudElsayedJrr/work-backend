@@ -3,7 +3,7 @@ const router = express.Router();
 const {
   upsertBudget,
   getAllBudgets,
-  getBudgetByYear,
+  getBudgetByYearAndFunding,
   deleteBudget,
 } = require("../controllers/budgetByYear_controllers");
 const verifyLogin = require("../middlewares/verifyLogin");
@@ -24,7 +24,7 @@ router.get(
   getAllBudgets,
 );
 
-router.get("/:fiscalYear", verifyLogin, getBudgetByYear);
+router.get("/:fiscalYear/:fundingType", verifyLogin, getBudgetByYearAndFunding);
 
 router.delete(
   "/:id",

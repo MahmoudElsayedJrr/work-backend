@@ -5,8 +5,17 @@ const budgetSchema = new mongoose.Schema(
     fiscalYear: {
       type: String,
       required: [true, "السنة المالية مطلوبة"],
-      unique: true,
       trim: true,
+    },
+
+    fundingType: {
+      type: String,
+      required: [true, "جهة التمويل مطلوبة"],
+      enum: {
+        values: ["خطة استثمارية", "تمويل الغير"],
+        message:
+          'نوع التمويل يجب أن يكون إما "خطة استثمارية" أو "تمويل الغير".',
+      },
     },
 
     amount: {

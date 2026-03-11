@@ -685,37 +685,63 @@ const GetActivitiesStatistics = async (req, res) => {
 
 const getPayoutPercentage = async (req, res) => {
   try {
-    const { fiscalYear } = req.query;
+    const { fiscalYear, fundingType } = req.query;
+
     if (!fiscalYear || fiscalYear === "الكل") {
       return res
         .status(400)
         .json(httpStatus.httpFaliureStatus("برجاء تحديد السنة المالية"));
     }
 
-    const budget = await Budget.findOne({ fiscalYear: fiscalYear.trim() });
+    let budgetAmount = 0;
 
-    if (!budget || !budget.amount) {
-      return res
-        .status(404)
-        .json(
-          httpStatus.httpFaliureStatus(`مفيش مخصص مالي للسنة ${fiscalYear}`),
-        );
+    if (fundingType && fundingType !== "الكل") {
+      const budget = await Budget.findOne({
+        fiscalYear: fiscalYear.trim(),
+        fundingType: fundingType,
+      });
+
+      if (!budget || !budget.amount) {
+        return res
+          .status(404)
+          .json(
+            httpStatus.httpFaliureStatus(
+              `مفيش مخصص مالي للسنة ${fiscalYear} - ${fundingType}`,
+            ),
+          );
+      }
+      budgetAmount = budget.amount;
+    } else {
+      const budgets = await Budget.find({ fiscalYear: fiscalYear.trim() });
+
+      if (!budgets || budgets.length === 0) {
+        return res
+          .status(404)
+          .json(
+            httpStatus.httpFaliureStatus(`مفيش مخصص مالي للسنة ${fiscalYear}`),
+          );
+      }
+
+      budgetAmount = budgets.reduce(
+        (sum, budget) => sum + (budget.amount || 0),
+        0,
+      );
     }
-
-    console.log("=== getPayoutPercentage DEBUG ===");
-    console.log("fiscalYear المطلوبة:", fiscalYear);
-    console.log("budget.amount من الداتابيز:", budget.amount);
 
     let queryForFilter = { ...req.query };
     delete queryForFilter.fiscalYear;
+    delete queryForFilter.fundingType;
 
     const filter = buildActivityFilter(queryForFilter, req.regionFilter);
+
+    if (fundingType && fundingType !== "الكل") {
+      filter.fundingType = fundingType;
+    }
+
     console.log("filter المستخدم:", JSON.stringify(filter, null, 2));
 
-    const activities = await ActivityModel.find(filter, "extract");
+    const activities = await ActivityModel.find(filter, "extract fundingType");
     console.log("عدد الأنشطة اللي اتجبت:", activities.length);
-
-    let grandTotal = 0;
 
     const totalDisbursed = activities.reduce((total, activity) => {
       const extracts = Array.isArray(activity.extract) ? activity.extract : [];
@@ -729,36 +755,16 @@ const getPayoutPercentage = async (req, res) => {
         0,
       );
 
-      // 🔍 طباعة كل activity فيها مستخلصات للسنة دي
-      if (extractsToSum.length > 0) {
-        console.log(`  ↳ activity extracts للسنة ${fiscalYear}:`);
-        extractsToSum.forEach((ex) => {
-          console.log(
-            `      extractFiscalYear: "${ex.extractFiscalYear}" | extractValue: ${ex.extractValue}`,
-          );
-        });
-        console.log(`      projectTotal: ${projectTotal}`);
-      }
-
-      grandTotal += projectTotal;
       return total + projectTotal;
     }, 0);
 
-    console.log("---");
-    console.log("totalDisbursed الإجمالي:", totalDisbursed);
-    console.log("budget.amount:", budget.amount);
-    console.log(
-      "النسبة:",
-      `(${totalDisbursed} / ${budget.amount}) * 100 = ${(totalDisbursed / budget.amount) * 100}`,
-    );
-    console.log("=================================");
-
-    const budgetAmount = budget.amount;
-    const percentage = (totalDisbursed / budgetAmount) * 100;
+    const percentage =
+      budgetAmount > 0 ? (totalDisbursed / budgetAmount) * 100 : 0;
 
     res.json(
       httpStatus.httpSuccessStatus({
         fiscalYear,
+        fundingType: fundingType || "الكل",
         budget: budgetAmount,
         totalDisbursed,
         percentage: Math.round(percentage * 100) / 100,
@@ -777,7 +783,6 @@ const getPayoutPercentage = async (req, res) => {
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
-
 // ==================== إجمالي المنصرف ====================
 const getTotalDisbursed = async (req, res) => {
   try {
@@ -785,28 +790,32 @@ const getTotalDisbursed = async (req, res) => {
       req.query.extractFiscalYear || req.query.fiscalYear;
 
     let queryForFilter = { ...req.query };
-    delete queryForFilter.extractFiscalYear;
-    delete queryForFilter.fiscalYear;
 
     const filter = buildActivityFilter(queryForFilter, req.regionFilter);
 
-    const activities = await ActivityModel.find(filter, "extract activityCode");
+    // لو عايز تحصر على سنة مالية محددة
+    if (targetFiscalYear) {
+      filter.fiscalYear = targetFiscalYear;
+    }
 
-    const totalDisbursed = activities.reduce((total, activity) => {
-      const extracts = Array.isArray(activity.extract) ? activity.extract : [];
+    const pipeline = [
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalDisbursed: { $sum: "$disbursedAmount" },
+        },
+      },
+    ];
 
-      const extractsToSum = targetFiscalYear
-        ? extracts.filter((ex) => ex.extractFiscalYear === targetFiscalYear)
-        : extracts;
+    const result = await ActivityModel.aggregate(pipeline);
 
-      const projectTotal = extractsToSum.reduce(
-        (sum, ex) => sum + (ex.extractValue || 0),
-        0,
-      );
+    // تحويل الرقم لعدد عشري ثابت 3 خانات
+    const totalDisbursed = result.length
+      ? Number(result[0].totalDisbursed.toFixed(3))
+      : 0;
 
-      return total + projectTotal;
-    }, 0);
-
+    console.log("total disbursed (from disbursedAmount) =", totalDisbursed);
     res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
   } catch (error) {
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
@@ -839,7 +848,7 @@ const getTotalContractualValue = async (req, res) => {
       (sum, activity) => sum + (activity.contractualValue || 0),
       0,
     );
-
+    console.log("total contractual value = " + totalContractualValue);
     res.json(httpStatus.httpSuccessStatus({ totalContractualValue }));
   } catch (error) {
     console.error("Error in getTotalContractualValue:", error);

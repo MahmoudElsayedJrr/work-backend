@@ -7,12 +7,27 @@ const {
 
 const upsertBudget = async (req, res) => {
   try {
-    const { fiscalYear, amount } = req.body;
+    const { fiscalYear, amount, fundingType } = req.body;
 
     if (!fiscalYear || amount === undefined || amount === null) {
       return res
         .status(400)
         .json(httpFaliureStatus("السنة المالية وقيمة المخصص مطلوبين"));
+    }
+
+    if (!fundingType) {
+      return res.status(400).json(httpFaliureStatus("جهة التمويل مطلوبة"));
+    }
+
+    const validFundingTypes = ["خطة استثمارية", "تمويل الغير"];
+    if (!validFundingTypes.includes(fundingType)) {
+      return res
+        .status(400)
+        .json(
+          httpFaliureStatus(
+            'نوع التمويل يجب أن يكون إما "خطة استثمارية" أو "تمويل الغير"',
+          ),
+        );
     }
 
     if (isNaN(amount) || Number(amount) < 0) {
@@ -24,7 +39,10 @@ const upsertBudget = async (req, res) => {
     }
 
     const budget = await Budget.findOneAndUpdate(
-      { fiscalYear: fiscalYear.trim() },
+      {
+        fiscalYear: fiscalYear.trim(),
+        fundingType: fundingType,
+      },
       { amount: Number(amount) },
       {
         new: true,
@@ -56,18 +74,29 @@ const getAllBudgets = async (req, res) => {
   }
 };
 
-const getBudgetByYear = async (req, res) => {
+const getBudgetByYearAndFunding = async (req, res) => {
   try {
-    const { fiscalYear } = req.params;
+    const { fiscalYear, fundingType } = req.params;
+
+    if (!fiscalYear || !fundingType) {
+      return res
+        .status(400)
+        .json(httpFaliureStatus("السنة المالية وجهة التمويل مطلوبين"));
+    }
 
     const budget = await Budget.findOne({
       fiscalYear: fiscalYear.trim(),
+      fundingType: fundingType,
     });
 
     if (!budget) {
       return res
         .status(404)
-        .json(httpFaliureStatus(`مفيش مخصص مالي للسنة ${fiscalYear}`));
+        .json(
+          httpFaliureStatus(
+            `مفيش مخصص مالي للسنة ${fiscalYear} بجهة تمويل "${fundingType}"`,
+          ),
+        );
     }
 
     res.status(200).json(httpSuccessStatus(budget));
@@ -97,6 +126,6 @@ const deleteBudget = async (req, res) => {
 module.exports = {
   upsertBudget,
   getAllBudgets,
-  getBudgetByYear,
+  getBudgetByYearAndFunding,
   deleteBudget,
 };
