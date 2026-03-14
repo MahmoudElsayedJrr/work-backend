@@ -793,29 +793,23 @@ const getTotalDisbursed = async (req, res) => {
 
     const filter = buildActivityFilter(queryForFilter, req.regionFilter);
 
-    // لو عايز تحصر على سنة مالية محددة
-    if (targetFiscalYear) {
-      filter.fiscalYear = targetFiscalYear;
-    }
+    const activities = await ActivityModel.find(filter, "extract activityCode");
 
-    const pipeline = [
-      { $match: filter },
-      {
-        $group: {
-          _id: null,
-          totalDisbursed: { $sum: "$disbursedAmount" },
-        },
-      },
-    ];
+    const totalDisbursed = activities.reduce((total, activity) => {
+      const extracts = Array.isArray(activity.extract) ? activity.extract : [];
 
-    const result = await ActivityModel.aggregate(pipeline);
+      const extractsToSum = targetFiscalYear
+        ? extracts.filter((ex) => ex.extractFiscalYear === targetFiscalYear)
+        : extracts;
 
-    // تحويل الرقم لعدد عشري ثابت 3 خانات
-    const totalDisbursed = result.length
-      ? Number(result[0].totalDisbursed.toFixed(3))
-      : 0;
+      const projectTotal = extractsToSum.reduce(
+        (sum, ex) => sum + (ex.extractValue || 0),
+        0,
+      );
 
-    console.log("total disbursed (from disbursedAmount) =", totalDisbursed);
+      return total + projectTotal;
+    }, 0);
+
     res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
   } catch (error) {
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
