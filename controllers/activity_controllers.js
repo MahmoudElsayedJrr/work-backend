@@ -683,9 +683,31 @@ const GetActivitiesStatistics = async (req, res) => {
   }
 };
 
+const calculateDisbursedLogic = async (query, regionFilter) => {
+  const targetFiscalYear = query.extractFiscalYear || query.fiscalYear;
+  const filter = buildActivityFilter({ ...query }, regionFilter);
+
+  const activities = await ActivityModel.find(filter, "extract activityCode");
+
+  return activities.reduce((total, activity) => {
+    const extracts = Array.isArray(activity.extract) ? activity.extract : [];
+    const extractsToSum = targetFiscalYear
+      ? extracts.filter((ex) => ex.extractFiscalYear === targetFiscalYear)
+      : extracts;
+
+    const projectTotal = extractsToSum.reduce((sum, ex) => sum + (ex.extractValue || 0), 0);
+    return total + projectTotal;
+  }, 0);
+};
+
 const getPayoutPercentage = async (req, res) => {
   try {
     const { fiscalYear, fundingType } = req.query;
+
+    // 1. تسجيل المدخلات الأساسية
+    console.log(
+      `--- [بداية الحساب] السنة: ${fiscalYear}, النوع: ${fundingType || "الكل"} ---`,
+    );
 
     if (!fiscalYear || fiscalYear === "الكل") {
       return res
@@ -702,6 +724,9 @@ const getPayoutPercentage = async (req, res) => {
       });
 
       if (!budget || !budget.amount) {
+        console.warn(
+          `⚠️ لم يتم العثور على ميزانية لـ ${fiscalYear} - ${fundingType}`,
+        );
         return res
           .status(404)
           .json(
@@ -715,6 +740,7 @@ const getPayoutPercentage = async (req, res) => {
       const budgets = await Budget.find({ fiscalYear: fiscalYear.trim() });
 
       if (!budgets || budgets.length === 0) {
+        console.warn(`⚠️ لا توجد ميزانيات مسجلة لهذه السنة: ${fiscalYear}`);
         return res
           .status(404)
           .json(
@@ -728,38 +754,35 @@ const getPayoutPercentage = async (req, res) => {
       );
     }
 
+    // 2. تسجيل مبلغ الميزانية المحسوب
+    console.log(`💰 إجمالي الميزانية (Budget): ${budgetAmount}`);
+
     let queryForFilter = { ...req.query };
     delete queryForFilter.fiscalYear;
     delete queryForFilter.fundingType;
 
     const filter = buildActivityFilter(queryForFilter, req.regionFilter);
-
     if (fundingType && fundingType !== "الكل") {
       filter.fundingType = fundingType;
     }
 
-    console.log("filter المستخدم:", JSON.stringify(filter, null, 2));
-
     const activities = await ActivityModel.find(filter, "extract fundingType");
-    console.log("عدد الأنشطة اللي اتجبت:", activities.length);
+    console.log(`🔍 عدد الأنشطة المسترجعة: ${activities.length}`);
 
-    const totalDisbursed = activities.reduce((total, activity) => {
-      const extracts = Array.isArray(activity.extract) ? activity.extract : [];
-
-      const extractsToSum = extracts.filter(
-        (ex) => ex.extractFiscalYear === fiscalYear,
-      );
-
-      const projectTotal = extractsToSum.reduce(
-        (sum, ex) => sum + (ex.extractValue || 0),
-        0,
-      );
-
-      return total + projectTotal;
-    }, 0);
-
+    const totalDisbursed = await calculateDisbursedLogic(req.query, req.regionFilter);
+    // 3. حساب النسبة المئوية
     const percentage =
       budgetAmount > 0 ? (totalDisbursed / budgetAmount) * 100 : 0;
+    const finalPercentage = Math.round(percentage * 100) / 100;
+
+    // 4. ملخص نهائي في الـ Log بشكل جدول
+    console.table({
+      "السنة المالية": fiscalYear,
+      "نوع التمويل": fundingType || "الكل",
+      الميزانية: budgetAmount.toLocaleString(),
+      "إجمالي المنصرف": totalDisbursed.toLocaleString(),
+      "النسبة المئوية %": finalPercentage + "%",
+    });
 
     res.json(
       httpStatus.httpSuccessStatus({
@@ -767,49 +790,19 @@ const getPayoutPercentage = async (req, res) => {
         fundingType: fundingType || "الكل",
         budget: budgetAmount,
         totalDisbursed,
-        percentage: Math.round(percentage * 100) / 100,
-        status:
-          percentage >= 100
-            ? "exceeded"
-            : percentage >= 75
-              ? "high"
-              : percentage >= 50
-                ? "medium"
-                : "low",
+        percentage: finalPercentage,
       }),
     );
   } catch (error) {
-    console.error("ERROR في getPayoutPercentage:", error.message);
+    console.error("❌ ERROR في getPayoutPercentage:", error.message);
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
 // ==================== إجمالي المنصرف ====================
 const getTotalDisbursed = async (req, res) => {
   try {
-    const targetFiscalYear =
-      req.query.extractFiscalYear || req.query.fiscalYear;
-
-    let queryForFilter = { ...req.query };
-
-    const filter = buildActivityFilter(queryForFilter, req.regionFilter);
-
-    const activities = await ActivityModel.find(filter, "extract activityCode");
-
-    const totalDisbursed = activities.reduce((total, activity) => {
-      const extracts = Array.isArray(activity.extract) ? activity.extract : [];
-
-      const extractsToSum = targetFiscalYear
-        ? extracts.filter((ex) => ex.extractFiscalYear === targetFiscalYear)
-        : extracts;
-
-      const projectTotal = extractsToSum.reduce(
-        (sum, ex) => sum + (ex.extractValue || 0),
-        0,
-      );
-
-      return total + projectTotal;
-    }, 0);
-
+    const totalDisbursed = await calculateDisbursedLogic(req.query, req.regionFilter);
+    
     res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
   } catch (error) {
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
@@ -831,8 +824,6 @@ const getTotalContractualValue = async (req, res) => {
       filter.fiscalYear = targetFiscalYear;
     }
 
-    console.log("الـ Filter النهائي هو:", filter);
-
     const activities = await ActivityModel.find(
       filter,
       "contractualValue activityCode fiscalYear",
@@ -842,7 +833,7 @@ const getTotalContractualValue = async (req, res) => {
       (sum, activity) => sum + (activity.contractualValue || 0),
       0,
     );
-    console.log("total contractual value = " + totalContractualValue);
+
     res.json(httpStatus.httpSuccessStatus({ totalContractualValue }));
   } catch (error) {
     console.error("Error in getTotalContractualValue:", error);
