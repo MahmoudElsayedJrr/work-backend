@@ -25,11 +25,11 @@ const addExtract = async (req, res) => {
       for (const file of req.files) {
         try {
           const fixedName = Buffer.from(file.originalname, "latin1").toString(
-            "utf8"
+            "utf8",
           );
           const { publicUrl, originalName } = await savePdfLocally(
             file,
-            "extractpdfs"
+            "extractpdfs",
           );
           extractPDFs.push({
             filename: originalName,
@@ -47,7 +47,7 @@ const addExtract = async (req, res) => {
     const currentFiscalYear = getFiscalYear(extractDate);
 
     const extractData = {
-      extractValue: parseFloat(extractValue),
+      extractValue: extractValue,
       extractDate: extractDate ? new Date(extractDate) : new Date(),
       extractFiscalYear: currentFiscalYear,
       extractPDFs: extractPDFs,
@@ -61,8 +61,8 @@ const addExtract = async (req, res) => {
       .status(201)
       .json(
         httpStatus.httpSuccessStatus(
-          activity.extract[activity.extract.length - 1]
-        )
+          activity.extract[activity.extract.length - 1],
+        ),
       );
   } catch (error) {
     console.error("Error adding extract:", error);
@@ -85,7 +85,7 @@ const updateExtract = async (req, res) => {
     }
 
     const extractIndex = activity.extract.findIndex(
-      (ex) => ex._id.toString() === extractId
+      (ex) => ex._id.toString() === extractId,
     );
     if (extractIndex === -1) {
       return res
@@ -113,7 +113,7 @@ const updateExtract = async (req, res) => {
         try {
           const { publicUrl, originalName } = await savePdfLocally(
             file,
-            "extractpdfs"
+            "extractpdfs",
           );
           newPDFs.push({
             filename: originalName,
@@ -155,7 +155,7 @@ const deleteExtract = async (req, res) => {
     }
 
     const extractIndex = activity.extract.findIndex(
-      (ex) => ex._id.toString() === extractId
+      (ex) => ex._id.toString() === extractId,
     );
     if (extractIndex === -1) {
       return res
@@ -202,7 +202,7 @@ const deleteExtract = async (req, res) => {
       httpStatus.httpSuccessStatus({
         message: "Extract deleted successfully",
         deletedExtract: deletedExtract,
-      })
+      }),
     );
   } catch (error) {
     console.error("Error deleting extract:", error);
