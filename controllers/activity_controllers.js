@@ -120,7 +120,6 @@ const buildActivityFilter = (query, regionFilter = {}) => {
   return filter;
 };
 
-// ==================== إضافة مشروع جديد ====================
 const AddNewActivity = async (req, res) => {
   try {
     if (req.userRegion && req.userRegion !== "super") {
@@ -215,7 +214,6 @@ const AddNewActivity = async (req, res) => {
   }
 };
 
-// ==================== جلب مشروع واحد ====================
 const GetActivityById = async (req, res) => {
   try {
     const { activityCode } = req.params;
@@ -242,7 +240,6 @@ const GetActivityById = async (req, res) => {
   }
 };
 
-// ==================== حذف مشروع ====================
 const DeleteActivity = async (req, res) => {
   try {
     const { activityCode } = req.params;
@@ -315,7 +312,6 @@ const DeleteActivity = async (req, res) => {
   }
 };
 
-// ==================== صلاحيات الحقول للتعديل ====================
 const updatableFieldsByRole = {
   admin: [
     "activityName",
@@ -422,7 +418,6 @@ const updatableFieldsByRole = {
   employee: [],
 };
 
-// ==================== تعديل مشروع ====================
 const UpdateActivity = async (req, res) => {
   try {
     const { activityCode } = req.params;
@@ -598,7 +593,6 @@ const UpdateActivity = async (req, res) => {
   }
 };
 
-// ==================== جلب كل المشاريع ====================
 const GetAllActivites = async (req, res) => {
   try {
     const filter = buildActivityFilter(req.query, req.regionFilter);
@@ -618,7 +612,6 @@ const GetAllActivites = async (req, res) => {
   }
 };
 
-// ==================== الإحصائيات ====================
 const GetActivitiesStatistics = async (req, res) => {
   try {
     const matchFilter = buildActivityFilter(req.query, req.regionFilter);
@@ -650,6 +643,9 @@ const GetActivitiesStatistics = async (req, res) => {
           suspended: {
             $sum: { $cond: [{ $eq: ["$status", "متوقف"] }, 1, 0] },
           },
+          needsExtension: {
+            $sum: { $cond: [{ $eq: ["$status", "يحتاج مد مدة"] }, 1, 0] },
+          },
           initialDelivery: {
             $sum: { $cond: [{ $eq: ["$status", "تسليم ابتدائي"] }, 1, 0] },
           },
@@ -669,6 +665,7 @@ const GetActivitiesStatistics = async (req, res) => {
           late: 1,
           inProgress: 1,
           suspended: 1,
+          needsExtension: 1,
           initialDelivery: 1,
           finalDelivery: 1,
         },
@@ -684,30 +681,37 @@ const GetActivitiesStatistics = async (req, res) => {
 };
 
 const calculateDisbursedLogic = async (query, regionFilter) => {
-  const targetFiscalYear = query.extractFiscalYear || query.fiscalYear;
-  const filter = buildActivityFilter({ ...query }, regionFilter);
+  const targetExtractFiscalYear = query.extractFiscalYear || query.fiscalYear;
 
-  const activities = await ActivityModel.find(filter, "extract activityCode");
+  const { extractFiscalYear, fiscalYear, ...restQuery } = query;
 
-  return activities.reduce((total, activity) => {
-    const extracts = Array.isArray(activity.extract) ? activity.extract : [];
-    const extractsToSum = targetFiscalYear
-      ? extracts.filter((ex) => ex.extractFiscalYear === targetFiscalYear)
-      : extracts;
+  const filter = buildActivityFilter(restQuery, regionFilter);
 
-    const projectTotal = extractsToSum.reduce((sum, ex) => sum + (ex.extractValue || 0), 0);
-    return total + projectTotal;
-  }, 0);
+  const pipeline = [
+    { $match: filter },
+    { $unwind: { path: "$extract", preserveNullAndEmptyArrays: false } },
+  ];
+
+  if (targetExtractFiscalYear && targetExtractFiscalYear !== "الكل") {
+    pipeline.push({
+      $match: { "extract.extractFiscalYear": targetExtractFiscalYear },
+    });
+  }
+
+  pipeline.push({
+    $group: {
+      _id: null,
+      totalDisbursed: { $sum: { $ifNull: ["$extract.extractValue", 0] } },
+    },
+  });
+
+  const result = await ActivityModel.aggregate(pipeline);
+  return result.length > 0 ? result[0].totalDisbursed : 0;
 };
 
 const getPayoutPercentage = async (req, res) => {
   try {
     const { fiscalYear, fundingType } = req.query;
-
-    // 1. تسجيل المدخلات الأساسية
-    console.log(
-      `--- [بداية الحساب] السنة: ${fiscalYear}, النوع: ${fundingType || "الكل"} ---`,
-    );
 
     if (!fiscalYear || fiscalYear === "الكل") {
       return res
@@ -767,22 +771,15 @@ const getPayoutPercentage = async (req, res) => {
     }
 
     const activities = await ActivityModel.find(filter, "extract fundingType");
-    console.log(`🔍 عدد الأنشطة المسترجعة: ${activities.length}`);
 
-    const totalDisbursed = await calculateDisbursedLogic(req.query, req.regionFilter);
+    const totalDisbursed = await calculateDisbursedLogic(
+      req.query,
+      req.regionFilter,
+    );
     // 3. حساب النسبة المئوية
     const percentage =
       budgetAmount > 0 ? (totalDisbursed / budgetAmount) * 100 : 0;
     const finalPercentage = Math.round(percentage * 100) / 100;
-
-    // 4. ملخص نهائي في الـ Log بشكل جدول
-    console.table({
-      "السنة المالية": fiscalYear,
-      "نوع التمويل": fundingType || "الكل",
-      الميزانية: budgetAmount.toLocaleString(),
-      "إجمالي المنصرف": totalDisbursed.toLocaleString(),
-      "النسبة المئوية %": finalPercentage + "%",
-    });
 
     res.json(
       httpStatus.httpSuccessStatus({
@@ -801,10 +798,18 @@ const getPayoutPercentage = async (req, res) => {
 // ==================== إجمالي المنصرف ====================
 const getTotalDisbursed = async (req, res) => {
   try {
-    const totalDisbursed = await calculateDisbursedLogic(req.query, req.regionFilter);
-    
+    console.log("📥 Query received:", req.query);
+
+    const totalDisbursed = await calculateDisbursedLogic(
+      req.query,
+      req.regionFilter,
+    );
+
+    console.log("💰 Total Disbursed:", totalDisbursed);
+
     res.json(httpStatus.httpSuccessStatus({ totalDisbursed }));
   } catch (error) {
+    console.error("❌ Error:", error);
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
@@ -1097,7 +1102,6 @@ const DeleteDecisionById = async (req, res) => {
         .json(httpStatus.httpFaliureStatus("Invalid decision ID format"));
     }
 
-    // ✅ بناء الـ query: يتضمن فلتر المنطقة (req.regionFilter)
     const query = {
       activityCode: activityCode.toUpperCase(),
       ...req.regionFilter,
@@ -1117,13 +1121,11 @@ const DeleteDecisionById = async (req, res) => {
         );
     }
 
-    // يجب التحقق من عدم وجود القرار بعد التحديث للعثور على الخطأ بشكل صحيح
     const decisionExistsAfterPull = updatedActivity.decision.some(
       (decision) => decision._id.toString() === decisionId,
     );
 
     if (decisionExistsAfterPull) {
-      // هذا الشرط لن يتحقق إذا كان $pull قد نجح
       return res
         .status(500)
         .json(httpStatus.httpFaliureStatus("Failed to remove decision."));
