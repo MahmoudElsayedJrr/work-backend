@@ -11,6 +11,14 @@ const addExtract = async (req, res) => {
     const { activityCode } = req.params;
     const { extractValue, extractDate } = req.body;
 
+    // ✅ تحويل extractValue لرقم
+    const numericExtractValue = parseFloat(extractValue);
+    if (isNaN(numericExtractValue)) {
+      return res.status(400).json(
+        httpStatus.httpFaliureStatus("Invalid extract value. Must be a valid number")
+      );
+    }
+
     const activity = await ActivityModel.findOne({
       activityCode: activityCode.toUpperCase(),
     });
@@ -47,14 +55,14 @@ const addExtract = async (req, res) => {
     const currentFiscalYear = getFiscalYear(extractDate);
 
     const extractData = {
-      extractValue: extractValue,
+      extractValue: numericExtractValue, // ✅ استخدم الرقم
       extractDate: extractDate ? new Date(extractDate) : new Date(),
       extractFiscalYear: currentFiscalYear,
       extractPDFs: extractPDFs,
     };
 
     activity.extract.push(extractData);
-    activity.disbursedAmount += extractData.extractValue;
+    activity.disbursedAmount += numericExtractValue; // ✅ كمان استخدم الرقم
     await activity.save();
 
     res
