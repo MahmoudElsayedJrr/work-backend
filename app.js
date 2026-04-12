@@ -8,7 +8,7 @@ const path = require("path");
 const cors = require("cors");
 const connectDB = require("./utils/connect_db");
 const express = require("express");
-const updateDelayedProjects = require("./utils/cornUpdateAllAactivites");
+const updateProjectsStatus = require("./utils/cornUpdateAllAactivites");
 const budgetRoutes = require("./Routes/budget_routes");
 const app = express();
 
@@ -16,7 +16,8 @@ app.use(cors({ origin: "*" }));
 
 app.use(express.json());
 connectDB();
-updateDelayedProjects();
+
+updateProjectsStatus();
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

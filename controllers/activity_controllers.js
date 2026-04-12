@@ -506,16 +506,15 @@ const UpdateActivity = async (req, res) => {
       const extensionDate = new Date(req.body.extensionDate);
       activityToUpdate.completionDate = extensionDate;
 
-      if (activityToUpdate.status === "متأخر" && extensionDate > Date.now()) {
-        activityToUpdate.status = "قيد التنفيذ";
-      }
-    }
+      const today = new Date();
+      const twoMonthsFromNow = new Date();
+      twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
 
-    if (
-      req.body.disbursedAmount !== undefined &&
-      allowedFields.includes("disbursedAmount")
-    ) {
-      activityToUpdate.disbursedAmount = parseFloat(req.body.disbursedAmount);
+      if (extensionDate > twoMonthsFromNow) {
+        activityToUpdate.status = "قيد التنفيذ";
+      } else if (extensionDate > today) {
+        activityToUpdate.status = "يحتاج مد مده";
+      }
     }
 
     if (req.body.roaddetails && allowedFields.includes("roaddetails")) {
@@ -541,6 +540,13 @@ const UpdateActivity = async (req, res) => {
           ? road.notes[0] || ""
           : road.notes || "",
       };
+    }
+
+    if (
+      req.body.disbursedAmount !== undefined &&
+      allowedFields.includes("disbursedAmount")
+    ) {
+      activityToUpdate.disbursedAmount = parseFloat(req.body.disbursedAmount);
     }
 
     if (req.files?.images?.length > 0) {
@@ -759,7 +765,6 @@ const getPayoutPercentage = async (req, res) => {
     }
 
     // 2. تسجيل مبلغ الميزانية المحسوب
-    console.log(`💰 إجمالي الميزانية (Budget): ${budgetAmount}`);
 
     let queryForFilter = { ...req.query };
     delete queryForFilter.fiscalYear;
@@ -798,8 +803,6 @@ const getPayoutPercentage = async (req, res) => {
 // ==================== إجمالي المنصرف ====================
 const getTotalDisbursed = async (req, res) => {
   try {
-    console.log("📥 Query received:", req.query);
-
     const totalDisbursed = await calculateDisbursedLogic(
       req.query,
       req.regionFilter,

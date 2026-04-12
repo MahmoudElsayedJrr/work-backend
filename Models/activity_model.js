@@ -106,6 +106,7 @@ const activitySchema = new mongoose.Schema(
         "تحت الطرح",
         "تسليم ابتدائي",
         "تسليم نهائي",
+        "يحتاج مد مده",
       ],
 
       default: "تحت الطرح",
@@ -394,7 +395,7 @@ const activitySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 activitySchema.pre("save", function (next) {
@@ -472,12 +473,12 @@ activitySchema.pre("findOneAndUpdate", async function (next) {
       ) {
         update.$set.status = "مكتمل";
         console.log(
-          `[findOneAndUpdate] تم تحديث الحالة إلى "مكتمل" (النسبة: ${progress}%)`
+          `[findOneAndUpdate] تم تحديث الحالة إلى "مكتمل" (النسبة: ${progress}%)`,
         );
       } else if (progress < 100 && update.$set.status === "مكتمل") {
         update.$set.status = "قيد التنفيذ";
         console.log(
-          `[findOneAndUpdate] تم تحديث الحالة إلى "قيد التنفيذ" (النسبة: ${progress}%)`
+          `[findOneAndUpdate] تم تحديث الحالة إلى "قيد التنفيذ" (النسبة: ${progress}%)`,
         );
       }
     }
@@ -488,12 +489,12 @@ activitySchema.pre("findOneAndUpdate", async function (next) {
       if (progress >= 100 && !["مسحوب", "متوقف"].includes(update.status)) {
         update.status = "مكتمل";
         console.log(
-          `[findOneAndUpdate] تم تحديث الحالة إلى "مكتمل" (النسبة: ${progress}%)`
+          `[findOneAndUpdate] تم تحديث الحالة إلى "مكتمل" (النسبة: ${progress}%)`,
         );
       } else if (progress < 100 && update.status === "مكتمل") {
         update.status = "قيد التنفيذ";
         console.log(
-          `[findOneAndUpdate] تم تحديث الحالة إلى "قيد التنفيذ" (النسبة: ${progress}%)`
+          `[findOneAndUpdate] تم تحديث الحالة إلى "قيد التنفيذ" (النسبة: ${progress}%)`,
         );
       }
     }
@@ -511,7 +512,7 @@ activitySchema.pre("updateMany", async function (next) {
     if (!isNaN(progress) && progress >= 100) {
       update.$set.status = "مكتمل";
       console.log(
-        `[updateMany] تم تحديث الحالة إلى "مكتمل" للمشاريع (النسبة: ${progress}%)`
+        `[updateMany] تم تحديث الحالة إلى "مكتمل" للمشاريع (النسبة: ${progress}%)`,
       );
     }
   }
