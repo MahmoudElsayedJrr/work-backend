@@ -650,7 +650,7 @@ const GetActivitiesStatistics = async (req, res) => {
             $sum: { $cond: [{ $eq: ["$status", "متوقف"] }, 1, 0] },
           },
           needsExtension: {
-            $sum: { $cond: [{ $eq: ["$status", "يحتاج مد مدة"] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ["$status", "يحتاج مد مده"] }, 1, 0] },
           },
           initialDelivery: {
             $sum: { $cond: [{ $eq: ["$status", "تسليم ابتدائي"] }, 1, 0] },
