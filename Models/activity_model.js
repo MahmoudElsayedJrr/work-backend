@@ -99,6 +99,7 @@ const activitySchema = new mongoose.Schema(
       type: String,
       enum: [
         "قيد التنفيذ",
+        "متعثرة",
         "مكتمل",
         "متأخر",
         "مسحوب",

@@ -641,6 +641,9 @@ const GetActivitiesStatistics = async (req, res) => {
           late: {
             $sum: { $cond: [{ $eq: ["$status", "متأخر"] }, 1, 0] },
           },
+          stuck: {
+            $sum: { $cond: [{ $eq: ["$status", "متعثرة"] }, 1, 0] },
+          },
           inProgress: {
             $sum: {
               $cond: [{ $eq: ["$status", "قيد التنفيذ"] }, 1, 0],
@@ -669,6 +672,7 @@ const GetActivitiesStatistics = async (req, res) => {
           completed: 1,
           withdrawn: 1,
           late: 1,
+          stuck: 1,
           inProgress: 1,
           suspended: 1,
           needsExtension: 1,
@@ -786,6 +790,12 @@ const getPayoutPercentage = async (req, res) => {
       budgetAmount > 0 ? (totalDisbursed / budgetAmount) * 100 : 0;
     const finalPercentage = Math.round(percentage * 100) / 100;
 
+
+    console.log("budgetAmount", budgetAmount);
+    console.log("totalDisbursed", totalDisbursed);
+    console.log("finalPercentage", finalPercentage);
+
+
     res.json(
       httpStatus.httpSuccessStatus({
         fiscalYear,
@@ -796,7 +806,7 @@ const getPayoutPercentage = async (req, res) => {
       }),
     );
   } catch (error) {
-    console.error("❌ ERROR في getPayoutPercentage:", error.message);
+    console.error(" ERROR في getPayoutPercentage:", error.message);
     res.status(500).json(httpStatus.httpErrorStatus(error.message));
   }
 };
