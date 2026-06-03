@@ -8,6 +8,8 @@ const savePdfLocally = require("../utils/uploadPDF");
 const path = require("path");
 const mongoose = require("mongoose");
 const Budget = require("../Models/budget_model");
+const isProjectDelayed = require("../utils/isProjectDelayed");
+
 
 const buildActivityFilter = (query, regionFilter = {}) => {
   const filter = {};
@@ -510,12 +512,27 @@ const UpdateActivity = async (req, res) => {
       const twoMonthsFromNow = new Date();
       twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
 
-      if (extensionDate > twoMonthsFromNow) {
-        activityToUpdate.status = "قيد التنفيذ";
-      } else if (extensionDate > today) {
+      const isDelayed = isProjectDelayed(
+        activityToUpdate.progress || 0,
+        activityToUpdate.receptionDate,
+        extensionDate
+      );
+
+      if (extensionDate > today && extensionDate <= twoMonthsFromNow) {
         activityToUpdate.status = "يحتاج مد مده";
-      }
-    }
+      } 
+     
+      else if (extensionDate <= today) {
+        activityToUpdate.status = "متأخر";
+      } 
+     
+      else if (isDelayed) {
+        activityToUpdate.status = "متعثرة";
+      } 
+      
+      else if (extensionDate > twoMonthsFromNow) {
+        activityToUpdate.status = "قيد التنفيذ";
+      }}
 
     if (req.body.roaddetails && allowedFields.includes("roaddetails")) {
       const road = req.body.roaddetails;
@@ -767,8 +784,6 @@ const getPayoutPercentage = async (req, res) => {
         0,
       );
     }
-
-    // 2. تسجيل مبلغ الميزانية المحسوب
 
     let queryForFilter = { ...req.query };
     delete queryForFilter.fiscalYear;

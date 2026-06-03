@@ -1,9 +1,37 @@
 const cron = require("node-cron");
 const ActivityModel = require("../Models/activity_model");
+const isProjectDelayed = require("./isProjectDelayed");
+
+
 
 const updateProjectsStatus = () => {
-  cron.schedule("0 0 * * *", async () => {
+  cron.schedule("55 13 * * *", async () => {
     try {
+
+
+      const ongoingProjects = await ActivityModel.find({
+        status: "قيد التنفيذ",
+        receptionDate: { $exists: true, $ne: null },
+        completionDate: { $exists: true, $ne: null },
+        progress: { $exists: true, $lt: 100 }
+      });
+
+      let delayedCount = 0;
+      for (const project of ongoingProjects) {
+        if (isProjectDelayed(project.progress, project.receptionDate, project.completionDate)) {
+          await ActivityModel.updateOne(
+            { _id: project._id },
+            { $set: { status: "متعثرة" } }
+          );
+          delayedCount++;
+          console.log(`⚠️ تم تحويل المشروع "${project.activityName|| project._id}" من "جاري التنفيذ" إلى "متعثر"`);
+        }
+      }
+      console.log(`✅ تم تحديث ${delayedCount} مشروع متعثر`);
+
+
+
+
       const today = new Date();
       const twoMonthsFromNow = new Date();
       twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
@@ -39,5 +67,6 @@ const updateProjectsStatus = () => {
     }
   });
 };
+
 
 module.exports = updateProjectsStatus;
