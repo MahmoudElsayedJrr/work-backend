@@ -5,7 +5,7 @@ const isProjectDelayed = require("./isProjectDelayed");
 
 
 const updateProjectsStatus = () => {
-  cron.schedule("* * * * *", async () => {
+  cron.schedule("0 * * * *", async () => {
     try {
 
 
