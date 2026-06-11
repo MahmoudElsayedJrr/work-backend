@@ -5,7 +5,7 @@ const isProjectDelayed = require("./isProjectDelayed");
 
 
 const updateProjectsStatus = () => {
-  cron.schedule("55 13 * * *", async () => {
+  cron.schedule("* * * * *", async () => {
     try {
 
 
@@ -54,7 +54,7 @@ const updateProjectsStatus = () => {
 
       const delayedResult = await ActivityModel.updateMany(
         {
-          status: "يحتاج مد مده",
+          status: { $in: ["يحتاج مد مده", "متعثرة"] },
           completionDate: { $lt: today },
         },
         {

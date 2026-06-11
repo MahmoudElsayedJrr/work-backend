@@ -518,12 +518,12 @@ const UpdateActivity = async (req, res) => {
         extensionDate
       );
 
-      if (extensionDate > today && extensionDate <= twoMonthsFromNow) {
-        activityToUpdate.status = "يحتاج مد مده";
+      if ( extensionDate < today) {
+        activityToUpdate.status = "متأخر";
       } 
      
-      else if (extensionDate <= today) {
-        activityToUpdate.status = "متأخر";
+      else if (extensionDate > today && extensionDate <= twoMonthsFromNow) {
+        activityToUpdate.status = "يحتاج مد مده";
       } 
      
       else if (isDelayed) {
